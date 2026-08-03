@@ -1,11 +1,13 @@
 {
-  "name": "winning-vocal-cost-allocator",
+  "name": "winning-vocal-collector",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "node-cron": "^3.0.3"
   }
 }
