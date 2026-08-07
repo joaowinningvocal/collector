@@ -181,11 +181,27 @@
         <div><h1>Clients</h1><p>Each client bills to their own Twilio number(s), with their own rates.</p></div>
         <button class="btn btn-red" onclick="openClientModal()">+ New client</button>
       </div>
+      <div class="toolbar">
+        <input id="cl-search" type="text" placeholder="Search client, business, or number…" style="min-width:280px" oninput="renderClients();renderDirectory()"/>
+        <select id="cl-business" onchange="renderClients()"><option value="">All businesses</option></select>
+      </div>
       <div class="card">
         <div class="tbl-scroll">
           <table>
             <thead><tr><th>Client</th><th>Business</th><th>Numbers</th><th>Rate / min</th><th>Rate / SMS</th><th></th></tr></thead>
             <tbody id="cl-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="page-head" style="margin-top:2rem">
+        <div><h1 style="font-size:15px">📇 Number directory</h1><p>Quick reference — which number belongs to whom.</p></div>
+      </div>
+      <div class="card">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Number</th><th>Client</th><th>Business</th></tr></thead>
+            <tbody id="dir-body"></tbody>
           </table>
         </div>
       </div>
@@ -358,8 +374,30 @@
   // ---- Clients ----
   async function loadClients(){
     CLIENTS = await (await fetch(API+'/clients')).json();
+    // populate business filter
+    var businesses = Array.from(new Set(CLIENTS.map(function(c){return c.business;}).filter(Boolean))).sort();
+    var bsel=document.getElementById('cl-business');
+    if(bsel){ var cur=bsel.value; bsel.innerHTML='<option value="">All businesses</option>'+businesses.map(function(b){return '<option value="'+b+'">'+b+'</option>';}).join(''); bsel.value=cur; }
+    renderClients();
+    renderDirectory();
+    // populate selectors elsewhere
+    var opts='<option value="">All clients</option>'+CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
+    document.getElementById('us-client').innerHTML=opts;
+    document.getElementById('in-client').innerHTML='<option value="">Choose a client…</option>'+CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
+    document.getElementById('mn-client').innerHTML=CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
+  }
+
+  function renderClients(){
+    var q=(document.getElementById('cl-search').value||'').toLowerCase();
+    var biz=document.getElementById('cl-business').value;
     var body=document.getElementById('cl-body');
-    body.innerHTML = CLIENTS.map(function(c){
+    var filtered=CLIENTS.filter(function(c){
+      if(biz && c.business!==biz) return false;
+      if(!q) return true;
+      var hay=(c.name+' '+(c.business||'')+' '+(c.numbers||[]).join(' ')).toLowerCase();
+      return hay.indexOf(q)>=0;
+    });
+    body.innerHTML = filtered.length ? filtered.map(function(c){
       return '<tr>'+
         '<td>'+c.name+'</td>'+
         '<td class="muted">'+(c.business||'—')+'</td>'+
@@ -369,12 +407,19 @@
         '<td class="right"><button class="btn btn-ghost btn-sm" onclick="editClient(\''+c.id+'\')">Edit</button> '+
           '<button class="btn btn-ghost btn-sm" onclick="delClient(\''+c.id+'\')">Delete</button></td>'+
       '</tr>';
-    }).join('');
-    // populate selectors
-    var opts='<option value="">All clients</option>'+CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
-    document.getElementById('us-client').innerHTML=opts;
-    document.getElementById('in-client').innerHTML='<option value="">Choose a client…</option>'+CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
-    document.getElementById('mn-client').innerHTML=CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
+    }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:2rem">No clients match.</td></tr>';
+  }
+
+  async function renderDirectory(){
+    try{
+      var dir=await (await fetch(API+'/numbers')).json();
+      var q=(document.getElementById('cl-search').value||'').toLowerCase();
+      if(q) dir=dir.filter(function(d){ return (d.number+' '+d.clientName+' '+d.business).toLowerCase().indexOf(q)>=0; });
+      var body=document.getElementById('dir-body');
+      body.innerHTML=dir.length?dir.map(function(d){
+        return '<tr><td><span class="pill pill-num">'+d.number+'</span></td><td>'+d.clientName+'</td><td class="muted">'+(d.business||'—')+'</td></tr>';
+      }).join(''):'<tr><td colspan="3" class="muted" style="text-align:center;padding:1.5rem">No numbers yet.</td></tr>';
+    }catch(e){}
   }
 
   function addNumberField(val){

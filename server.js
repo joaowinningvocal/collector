@@ -39,7 +39,27 @@ if (!fs.existsSync(USERS_FILE)) {
     { username:'adminjoao', password:'vocal2026!', role:'master', name:'João' },
   ]);
 }
-if (!fs.existsSync(CLIENTS_FILE))  write(CLIENTS_FILE, []);
+if (!fs.existsSync(CLIENTS_FILE)) {
+  const seed = [
+    { name:'Cats Meow Karaoke',           business:'Cats Meow',        numbers:['+15046819283'] },
+    { name:'Hustler Las Vegas - Heather',  business:'Larry Flynt',      numbers:['+17029970961'] },
+    { name:'Kings of Hustler',             business:'Larry Flynt',      numbers:['+17025471904'] },
+    { name:'Deja Vu Showgirls Ypsilanti',  business:'Deja Vu',          numbers:['+17348965038'] },
+    { name:'Kalamazoo',                    business:'Deja Vu',          numbers:['+12697754582'] },
+    { name:'Barely Legal New Orleans',     business:'Barely Legal',     numbers:['+15044746323'] },
+    { name:'Hustler New Orleans',          business:'Larry Flynt',      numbers:['+15045141440'] },
+    { name:'Deja Vu Stockton',             business:'Deja Vu',          numbers:['+19163504781'] },
+    { name:'James - WinningVocal',         business:'Winning Vocal',    numbers:['+18773956676'] },
+    { name:'GoBest',                       business:'GoBest',           numbers:['+17027283109'] },
+    { name:'Lily - Winning Realty',        business:'Winning Realty',   numbers:['+17029049574'] },
+  ].map((c, i) => ({
+    id: 'c_seed' + (i+1),
+    name: c.name, business: c.business, numbers: c.numbers,
+    rateMin: DEFAULT_RATE_MIN, rateSms: DEFAULT_RATE_SMS,
+    notes: '', createdAt: new Date().toISOString()
+  }));
+  write(CLIENTS_FILE, seed);
+}
 if (!fs.existsSync(USAGE_FILE))    write(USAGE_FILE, []);
 if (!fs.existsSync(INVOICES_FILE)) write(INVOICES_FILE, []);
 
@@ -76,32 +96,43 @@ function twilioGet(urlPath) {
   });
 }
 
+// Fetch ALL pages of a Twilio list resource, following next_page_uri.
+async function twilioGetAll(firstPath, listKey) {
+  let items = [];
+  let pagePath = firstPath;
+  let guard = 0;
+  while (pagePath && guard < 50) {
+    guard++;
+    const data = await twilioGet(pagePath);
+    if (data && Array.isArray(data[listKey])) items = items.concat(data[listKey]);
+    // Twilio returns next_page_uri as a path (or null)
+    pagePath = data && data.next_page_uri ? data.next_page_uri : null;
+  }
+  return items;
+}
+
 // Fetch usage for a single number on a given date (Pacific day).
 // Returns { minutes, sms }.
 async function fetchNumberUsage(number, dateStr) {
-  // Twilio filters by UTC date; we approximate the Pacific day.
-  // Calls: sum duration (seconds) where From = number, on that date.
   let minutes = 0, sms = 0;
 
   try {
-    // Messages sent FROM this number on this date
+    // Messages sent FROM this number on this date (paginated)
     let msgPath = '/2010-04-01/Accounts/' + TWILIO_SID + '/Messages.json'
       + '?From=' + encodeURIComponent(number)
       + '&DateSent=' + dateStr + '&PageSize=1000';
-    const msgs = await twilioGet(msgPath);
-    if (msgs && Array.isArray(msgs.messages)) sms = msgs.messages.length;
+    const messages = await twilioGetAll(msgPath, 'messages');
+    sms = messages.length;
   } catch(e) { console.warn('[Twilio] SMS fetch failed for', number, e.message); }
 
   try {
-    // Calls FROM this number on this date
+    // Calls FROM this number on this date (paginated)
     let callPath = '/2010-04-01/Accounts/' + TWILIO_SID + '/Calls.json'
       + '?From=' + encodeURIComponent(number)
       + '&StartTime=' + dateStr + '&PageSize=1000';
-    const calls = await twilioGet(callPath);
-    if (calls && Array.isArray(calls.calls)) {
-      let totalSec = calls.calls.reduce((a, c) => a + (parseInt(c.duration) || 0), 0);
-      minutes = Math.ceil(totalSec / 60);
-    }
+    const calls = await twilioGetAll(callPath, 'calls');
+    let totalSec = calls.reduce((a, c) => a + (parseInt(c.duration) || 0), 0);
+    minutes = Math.ceil(totalSec / 60);
   } catch(e) { console.warn('[Twilio] Calls fetch failed for', number, e.message); }
 
   return { minutes, sms };
@@ -190,6 +221,17 @@ app.post('/login', (req, res) => {
 
 // ── Clients CRUD ──────────────────────────────────────────────────────────────
 app.get('/clients', (req, res) => res.json(read(CLIENTS_FILE, [])));
+
+// Number directory — flat list of every number and who it belongs to
+app.get('/numbers', (req, res) => {
+  const clients = read(CLIENTS_FILE, []);
+  const dir = [];
+  clients.forEach(c => (c.numbers || []).forEach(n => dir.push({
+    number: n, clientId: c.id, clientName: c.name, business: c.business || ''
+  })));
+  dir.sort((a, b) => a.clientName.localeCompare(b.clientName));
+  res.json(dir);
+});
 
 app.post('/clients', (req, res) => {
   const clients = read(CLIENTS_FILE, []);
