@@ -28,6 +28,7 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const CLIENTS_FILE  = path.join(DATA_DIR, 'clients.json');
 const USAGE_FILE    = path.join(DATA_DIR, 'usage.json');     // daily usage log
 const INVOICES_FILE = path.join(DATA_DIR, 'invoices.json');
+const EXPENSES_FILE = path.join(DATA_DIR, 'expenses.json');
 const USERS_FILE    = path.join(DATA_DIR, 'users.json');
 
 function read(file, fallback) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; } }
@@ -62,6 +63,12 @@ if (!fs.existsSync(CLIENTS_FILE)) {
 }
 if (!fs.existsSync(USAGE_FILE))    write(USAGE_FILE, []);
 if (!fs.existsSync(INVOICES_FILE)) write(INVOICES_FILE, []);
+if (!fs.existsSync(EXPENSES_FILE)) {
+  write(EXPENSES_FILE, [
+    { id:'e_rail', label:'Railway',  amount:5,   type:'recurring', month:null, createdAt:new Date().toISOString() },
+    { id:'e_claude', label:'Claude', amount:100, type:'recurring', month:null, createdAt:new Date().toISOString() },
+  ]);
+}
 
 // ── Date helpers (Pacific time) ───────────────────────────────────────────────
 function pacificDateStr(d) {
@@ -348,6 +355,63 @@ app.post('/invoices/generate-all', (req, res) => {
   const month = (req.body && req.body.month) || monthKey(pacificDateStr());
   res.json(generateMonthlyInvoices(month));
 });
+
+// ── Expenses ──────────────────────────────────────────────────────────────────
+// type: 'recurring' (every month), 'onetime' (tied to a specific month), 'general' (untied)
+app.get('/expenses', (req, res) => {
+  let expenses = read(EXPENSES_FILE, []);
+  const { month } = req.query;
+  if (month) {
+    // Return recurring (always) + one-time for that month + general
+    expenses = expenses.filter(e =>
+      e.type === 'recurring' ||
+      e.type === 'general' ||
+      (e.type === 'onetime' && e.month === month)
+    );
+  }
+  res.json(expenses);
+});
+
+app.post('/expenses', (req, res) => {
+  const expenses = read(EXPENSES_FILE, []);
+  const { label, amount, type, month } = req.body;
+  if (!label || amount == null) return res.status(400).json({ error: 'label and amount required' });
+  const exp = {
+    id: 'e_' + Date.now().toString(36),
+    label, amount: Number(amount),
+    type: ['recurring','onetime','general'].includes(type) ? type : 'onetime',
+    month: type === 'onetime' ? (month || monthKey(pacificDateStr())) : null,
+    createdAt: new Date().toISOString()
+  };
+  expenses.push(exp);
+  write(EXPENSES_FILE, expenses);
+  res.json(exp);
+});
+
+app.patch('/expenses/:id', (req, res) => {
+  const expenses = read(EXPENSES_FILE, []);
+  const idx = expenses.findIndex(e => e.id === req.params.id);
+  if (idx < 0) return res.status(404).json({ error: 'Not found' });
+  const b = req.body;
+  if (b.label != null) expenses[idx].label = b.label;
+  if (b.amount != null) expenses[idx].amount = Number(b.amount);
+  if (b.type != null) { expenses[idx].type = b.type; if (b.type !== 'onetime') expenses[idx].month = null; }
+  if (b.month != null) expenses[idx].month = b.month;
+  write(EXPENSES_FILE, expenses);
+  res.json(expenses[idx]);
+});
+
+app.delete('/expenses/:id', (req, res) => {
+  write(EXPENSES_FILE, read(EXPENSES_FILE, []).filter(e => e.id !== req.params.id));
+  res.json({ success: true });
+});
+
+// Expense total for a given month (recurring + that month's one-time + general)
+function expensesForMonth(month) {
+  return read(EXPENSES_FILE, []).filter(e =>
+    e.type === 'recurring' || e.type === 'general' || (e.type === 'onetime' && e.month === month)
+  );
+}
 
 // ── Health + Twilio status ────────────────────────────────────────────────────
 app.get('/status', (req, res) => {

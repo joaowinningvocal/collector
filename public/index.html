@@ -151,6 +151,7 @@
     <button class="tab" onclick="showPage('clients',this)">Clients</button>
     <button class="tab" onclick="showPage('usage',this)">Usage</button>
     <button class="tab" onclick="showPage('invoices',this)">Invoices</button>
+    <button class="tab" onclick="showPage('expenses',this)">Expenses</button>
   </div>
 
   <div class="wrap">
@@ -253,6 +254,27 @@
       </div>
     </div>
 
+    <!-- EXPENSES -->
+    <div class="page" id="page-expenses">
+      <div class="page-head">
+        <div><h1>Expenses</h1><p>Recurring monthly costs, one-time charges, and general expenses.</p></div>
+        <div style="display:flex;gap:.6rem">
+          <select id="ex-month" class="btn-ghost" style="padding:9px 12px;border-radius:8px" onchange="loadExpenses()"></select>
+          <button class="btn btn-red" onclick="openExpenseModal()">+ New expense</button>
+        </div>
+      </div>
+      <div class="stats" id="ex-stats"></div>
+      <div class="card">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Expense</th><th>Type</th><th>Applies to</th><th>Amount</th><th></th></tr></thead>
+            <tbody id="ex-body"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="ex-empty" style="display:none"><p>No expenses for this month.</p></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -304,6 +326,34 @@
   </div>
 </div>
 
+<!-- EXPENSE MODAL -->
+<div class="modal-bg" id="expense-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h3><span id="ex-title">New expense</span><button class="x" onclick="document.getElementById('expense-modal').classList.remove('open')">×</button></h3>
+    <input type="hidden" id="ex-id"/>
+    <div class="field-row">
+      <div class="field"><label>Label</label><input id="ex-label" placeholder="e.g. Railway"/></div>
+      <div class="field"><label>Amount ($)</label><input id="ex-amount" type="text" placeholder="0.00"/></div>
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <select id="ex-type" style="width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px" onchange="toggleExpMonth()">
+        <option value="recurring">Recurring monthly — charged every month</option>
+        <option value="onetime">One-time — tied to a specific month</option>
+        <option value="general">General — always counted</option>
+      </select>
+    </div>
+    <div class="field" id="ex-month-field" style="display:none">
+      <label>Which month</label>
+      <select id="ex-month-pick" style="width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px"></select>
+    </div>
+    <div style="display:flex;gap:.6rem;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('expense-modal').classList.remove('open')">Cancel</button>
+      <button class="btn btn-red" onclick="saveExpense()">Save expense</button>
+    </div>
+  </div>
+</div>
+
 <script>
   var API = window.location.origin;
   var CURRENT = null;
@@ -344,7 +394,7 @@
     document.getElementById('app').style.display='block';
     document.getElementById('who').textContent = CURRENT.name || CURRENT.username;
     // month selectors
-    ['ov-month','us-month','in-month'].forEach(function(id){ monthOptions(document.getElementById(id)); });
+    ['ov-month','us-month','in-month','ex-month','ex-month-pick'].forEach(function(id){ monthOptions(document.getElementById(id)); });
     await checkStatus();
     await loadClients();
     await loadOverview();
@@ -368,6 +418,7 @@
     if(name==='clients') loadClients();
     if(name==='usage') loadUsage();
     if(name==='invoices') loadInvoices();
+    if(name==='expenses') loadExpenses();
     if(name==='overview') loadOverview();
   }
 
@@ -604,6 +655,72 @@
     if(!confirm('Generate invoices for ALL clients for '+month+'?')) return;
     await fetch(API+'/invoices/generate-all',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({month:month})});
     loadInvoices();
+  }
+
+  // ---- Expenses ----
+  var EXPENSES=[];
+  async function loadExpenses(){
+    var month=document.getElementById('ex-month').value;
+    EXPENSES=await (await fetch(API+'/expenses?month='+month)).json();
+    var typeLabel={recurring:'Recurring',onetime:'One-time',general:'General'};
+    var total=EXPENSES.reduce(function(a,e){return a+(e.amount||0);},0);
+    var recur=EXPENSES.filter(function(e){return e.type==='recurring';}).reduce(function(a,e){return a+e.amount;},0);
+    document.getElementById('ex-stats').innerHTML=
+      stat('Recurring / month',money(recur))+
+      stat('This month total',money(total),true);
+    var body=document.getElementById('ex-body');
+    document.getElementById('ex-empty').style.display=EXPENSES.length?'none':'block';
+    body.innerHTML=EXPENSES.map(function(e){
+      var applies=e.type==='onetime'?e.month:(e.type==='recurring'?'Every month':'Always');
+      return '<tr><td>'+e.label+'</td><td><span class="pill '+(e.type==='recurring'?'pill-num':'')+'">'+typeLabel[e.type]+'</span></td>'+
+        '<td class="muted">'+applies+'</td><td><strong>'+money(e.amount)+'</strong></td>'+
+        '<td class="right"><button class="btn btn-ghost btn-sm" onclick="editExpense(\''+e.id+'\')">Edit</button> '+
+        '<button class="btn btn-ghost btn-sm" onclick="delExpense(\''+e.id+'\')">Delete</button></td></tr>';
+    }).join('');
+  }
+  function toggleExpMonth(){
+    var t=document.getElementById('ex-type').value;
+    document.getElementById('ex-month-field').style.display=(t==='onetime')?'block':'none';
+  }
+  function openExpenseModal(){
+    document.getElementById('ex-title').textContent='New expense';
+    document.getElementById('ex-id').value='';
+    document.getElementById('ex-label').value='';
+    document.getElementById('ex-amount').value='';
+    document.getElementById('ex-type').value='recurring';
+    document.getElementById('ex-month-pick').value=document.getElementById('ex-month').value;
+    toggleExpMonth();
+    document.getElementById('expense-modal').classList.add('open');
+  }
+  function editExpense(id){
+    var e=EXPENSES.find(function(x){return x.id===id;}); if(!e) return;
+    document.getElementById('ex-title').textContent='Edit expense';
+    document.getElementById('ex-id').value=e.id;
+    document.getElementById('ex-label').value=e.label;
+    document.getElementById('ex-amount').value=e.amount;
+    document.getElementById('ex-type').value=e.type;
+    if(e.month) document.getElementById('ex-month-pick').value=e.month;
+    toggleExpMonth();
+    document.getElementById('expense-modal').classList.add('open');
+  }
+  async function saveExpense(){
+    var id=document.getElementById('ex-id').value;
+    var payload={
+      label:document.getElementById('ex-label').value.trim(),
+      amount:num(document.getElementById('ex-amount').value),
+      type:document.getElementById('ex-type').value,
+      month:document.getElementById('ex-month-pick').value
+    };
+    if(!payload.label){ alert('Label is required'); return; }
+    if(id){ await fetch(API+'/expenses/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+    else { await fetch(API+'/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
+    document.getElementById('expense-modal').classList.remove('open');
+    loadExpenses();
+  }
+  async function delExpense(id){
+    if(!confirm('Delete this expense?')) return;
+    await fetch(API+'/expenses/'+id,{method:'DELETE'});
+    loadExpenses();
   }
 
   // ---- boot ----
