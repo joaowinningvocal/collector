@@ -2,123 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Winning Vocal — Billing</title>
-<style>
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --red:#EC2229; --red-dark:#B0161C; --red-soft:#FDECEC;
-    --ink:#161616; --ink-soft:#4a4a4a; --muted:#8a8a8a;
-    --line:#e8e8e8; --line-strong:#d3d3d3;
-    --bg:#f6f5f3; --surface:#ffffff; --surface-2:#faf9f8;
-    --good-bg:#E7F4E9; --good-text:#1f7a34; --warn-bg:#FBF0D9; --warn-text:#8a6d1a;
-  }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
-  input,select,button,textarea{font-family:inherit}
-
-  /* Login */
-  #login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:1.5rem}
-  .brand{display:flex;align-items:baseline;gap:.5rem;font-weight:800;font-size:26px;letter-spacing:-.02em}
-  .brand .mark{color:var(--red)}
-  .login-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.75rem;width:100%;max-width:340px;box-shadow:0 4px 24px rgba(0,0,0,.06)}
-  .login-card label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:6px}
-  .login-card input{width:100%;padding:10px 12px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;margin-bottom:1rem;outline:none}
-  .login-card input:focus{border-color:var(--red)}
-  .err{color:var(--red);font-size:12px;margin-top:.5rem;display:none}
-
-  /* App shell */
-  #app{display:none}
-  .masthead{background:var(--ink);color:#fff;padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;position:sticky;top:0;z-index:20}
-  .masthead .brand{font-size:19px}
-  .masthead .brand .tool{font-weight:500;font-size:12px;color:#b8b8b8;border-left:1px solid #3a3a3a;padding-left:.55rem}
-  .mast-right{display:flex;align-items:center;gap:.75rem;font-size:13px;color:#cfcfcf}
-  .twilio-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:20px;background:#262626}
-  .twilio-dot i{width:7px;height:7px;border-radius:50%;background:#4caf50}
-  .twilio-dot.off i{background:#e0a800}
-  .link-btn{background:none;border:1px solid #3a3a3a;color:#cfcfcf;font-size:12px;padding:5px 11px;border-radius:7px;cursor:pointer}
-  .link-btn:hover{border-color:#555;color:#fff}
-
-  .tabs{display:flex;gap:2px;padding:0 1.5rem;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:56px;z-index:15}
-  .tab{font-size:13px;font-weight:600;padding:12px 16px;background:none;border:none;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
-  .tab.active{color:var(--red);border-bottom-color:var(--red)}
-  .tab:hover:not(.active){color:var(--ink)}
-
-  .wrap{max-width:1180px;margin:0 auto;padding:1.75rem 1.5rem 4rem}
-  .page{display:none}
-  .page.active{display:block}
-
-  .page-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem}
-  .page-head h1{font-size:18px;font-weight:800;letter-spacing:-.01em}
-  .page-head p{font-size:13px;color:var(--muted);margin-top:.15rem}
-
-  .btn{border:none;border-radius:8px;padding:9px 15px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
-  .btn-red{background:var(--red);color:#fff}
-  .btn-red:hover{background:var(--red-dark)}
-  .btn-ghost{background:var(--surface);color:var(--ink-soft);border:1px solid var(--line-strong)}
-  .btn-ghost:hover{border-color:var(--muted)}
-  .btn-sm{padding:6px 11px;font-size:12px}
-
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .card + .card{margin-top:1rem}
-
-  /* Stat row */
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
-  .stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.25rem}
-  .stat .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-  .stat .v{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:.35rem;font-variant-numeric:tabular-nums}
-  .stat .v.red{color:var(--red-dark)}
-
-  /* Tables */
-  .tbl-scroll{overflow-x:auto}
-  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-  thead th{text-align:right;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
-  thead th:first-child{text-align:left}
-  tbody td{padding:11px 14px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-  tbody td:first-child{text-align:left;font-weight:700}
-  tbody tr:last-child td{border-bottom:none}
-  tbody tr:hover{background:var(--surface-2)}
-  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
-  .pill-num{background:var(--red-soft);color:var(--red-dark);font-family:'Courier New',monospace}
-  .muted{color:var(--muted)}
-  .right{text-align:right}
-
-  /* Toolbar */
-  .toolbar{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
-  .toolbar select,.toolbar input{padding:8px 11px;border:1px solid var(--line-strong);border-radius:8px;font-size:13px;outline:none;background:var(--surface)}
-  .toolbar select:focus,.toolbar input:focus{border-color:var(--red)}
-
-  /* Modal */
-  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:1rem}
-  .modal-bg.open{display:flex}
-  .modal{background:var(--surface);border-radius:14px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem}
-  .modal h3{font-size:16px;font-weight:800;margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:center}
-  .modal .x{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
-  .field{margin-bottom:1rem}
-  .field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);display:block;margin-bottom:5px}
-  .field input,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px;font-size:14px;outline:none}
-  .field input:focus,.field textarea:focus{border-color:var(--red)}
-  .field .hint{font-size:11px;color:var(--muted);margin-top:4px}
-  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-  .num-list{display:flex;flex-direction:column;gap:6px}
-  .num-item{display:flex;gap:6px}
-  .num-item input{flex:1}
-  .num-item button{border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;padding:0 12px;cursor:pointer;color:var(--muted)}
-
-  /* Invoice detail */
-  .inv-doc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.75rem;max-width:640px}
-  .inv-doc .inv-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--ink);padding-bottom:1rem;margin-bottom:1.25rem}
-  .inv-doc .inv-head .brand{font-size:20px}
-  .inv-doc .inv-head .meta{text-align:right;font-size:12px;color:var(--muted)}
-  .inv-doc .inv-head .meta strong{display:block;font-size:15px;color:var(--ink);font-weight:800}
-  .inv-line{display:flex;justify-content:space-between;padding:.7rem 0;border-bottom:1px dashed var(--line);font-size:14px}
-  .inv-line .calc{color:var(--muted);font-size:12px}
-  .inv-total{display:flex;justify-content:space-between;margin-top:1rem;padding-top:1rem;border-top:2px solid var(--ink)}
-  .inv-total .l{font-weight:800}
-  .inv-total .v{font-size:24px;font-weight:800;color:var(--red-dark)}
-
-  .empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
-  .empty p{font-size:14px}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/styles.css"/>
 </head>
 <body>
 
@@ -126,609 +15,435 @@
 <div id="login">
   <div class="brand">Winning<span class="mark">Vocal</span></div>
   <div class="login-card">
-    <label>Username</label>
-    <input id="lg-user" type="text" placeholder="username" autocomplete="username"/>
-    <label>Password</label>
-    <input id="lg-pass" type="password" placeholder="password" autocomplete="current-password"/>
+    <label for="lg-user">Username</label>
+    <input id="lg-user" type="text" autocomplete="username" autocapitalize="none"/>
+    <label for="lg-pass">Password</label>
+    <input id="lg-pass" type="password" autocomplete="current-password"/>
     <button class="btn btn-red" style="width:100%" onclick="doLogin()">Sign in</button>
-    <div class="err" id="lg-err">Invalid username or password.</div>
+    <div class="err hidden" id="lg-err"></div>
   </div>
 </div>
 
 <!-- APP -->
-<div id="app">
-  <div class="masthead">
-    <div class="brand">Winning<span class="mark">Vocal</span> <span class="tool">Billing</span></div>
+<div id="app" class="hidden">
+  <header class="masthead">
+    <div class="brand">Winning<span class="mark">Vocal</span><span class="tool">Billing</span></div>
     <div class="mast-right">
-      <span class="twilio-dot" id="tw-status"><i></i> Twilio</span>
+      <button class="sync-chip" id="chip-telnyx" onclick="showPage('settings')"><i></i>Telnyx</button>
+      <button class="sync-chip" id="chip-cartvip" onclick="showPage('settings')"><i></i>CartVIP</button>
       <span id="who"></span>
       <button class="link-btn" onclick="doLogout()">Sign out</button>
     </div>
-  </div>
+  </header>
 
-  <div class="tabs">
-    <button class="tab active" onclick="showPage('overview',this)">Overview</button>
-    <button class="tab" onclick="showPage('clients',this)">Clients</button>
-    <button class="tab" onclick="showPage('usage',this)">Usage</button>
-    <button class="tab" onclick="showPage('invoices',this)">Invoices</button>
-    <button class="tab" onclick="showPage('expenses',this)">Expenses</button>
-  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab" data-page="overview">Overview</button>
+    <button class="tab" data-page="callcenter">Call center</button>
+    <button class="tab" data-page="sales">Sales <span class="count hidden" id="unassigned-count"></span></button>
+    <button class="tab" data-page="calls">Calls</button>
+    <button class="tab" data-page="billing">Receptionist billing</button>
+    <button class="tab" data-page="expenses">Expenses</button>
+    <button class="tab" data-page="clients">Clients</button>
+    <button class="tab" data-page="settings">Settings</button>
+  </nav>
 
-  <div class="wrap">
+  <main class="wrap">
 
     <!-- OVERVIEW -->
-    <div class="page active" id="page-overview">
+    <section class="page" id="page-overview">
       <div class="page-head">
-        <div><h1>Overview</h1><p id="ov-sub">This month at a glance</p></div>
-        <div style="display:flex;gap:.6rem">
-          <select id="ov-month" class="btn-ghost" style="padding:9px 12px;border-radius:8px" onchange="loadOverview()"></select>
-          <button class="btn btn-ghost" onclick="collectNow()">Collect today now</button>
+        <div><h1 id="ov-title">Overview</h1><p>Money in, money out and what's left for the month.</p></div>
+        <div class="head-actions"><select class="select" id="ov-month" onchange="loadOverview()"></select></div>
+      </div>
+      <div id="ov-equation"></div>
+      <div id="ov-alerts" class="section"></div>
+      <div class="grid-2 section">
+        <div>
+          <div class="section-head"><h2>Call center invoices</h2><button class="btn btn-ghost btn-sm" onclick="showPage('callcenter')">Open call center</button></div>
+          <div class="card"><div class="tbl-scroll"><table>
+            <thead><tr><th class="l">Period</th><th>Invoice</th><th>Sales</th><th>Agent pay</th><th>Billed</th></tr></thead>
+            <tbody id="ov-periods"></tbody>
+          </table></div></div>
+        </div>
+        <div>
+          <div class="section-head"><h2>Expenses</h2><button class="btn btn-ghost btn-sm" onclick="showPage('expenses')">Open expenses</button></div>
+          <div class="card"><div class="tbl-scroll"><table>
+            <thead><tr><th class="l">Expense</th><th>This month</th></tr></thead>
+            <tbody id="ov-expenses"></tbody>
+          </table></div></div>
         </div>
       </div>
-      <div class="stats" id="ov-stats"></div>
-      <div class="card">
-        <div class="tbl-scroll">
-          <table>
-            <thead><tr><th>Client</th><th>Minutes</th><th>Texts</th><th>Min cost</th><th>SMS cost</th><th>Total</th></tr></thead>
-            <tbody id="ov-body"></tbody>
-          </table>
-        </div>
+      <div class="section">
+        <div class="section-head"><h2>Receptionist billing by client</h2><p id="ov-calls-note"></p></div>
+        <div class="card"><div class="tbl-scroll"><table>
+          <thead><tr><th class="l">Client</th><th>Calls</th><th>Minutes</th><th>Texts</th><th>Billed</th></tr></thead>
+          <tbody id="ov-clients"></tbody>
+        </table></div></div>
       </div>
-    </div>
+    </section>
 
-    <!-- CLIENTS -->
-    <div class="page" id="page-clients">
+    <!-- CALL CENTER -->
+    <section class="page" id="page-callcenter">
       <div class="page-head">
-        <div><h1>Clients</h1><p>Each client bills to their own Twilio number(s), with their own rates.</p></div>
-        <button class="btn btn-red" onclick="openClientModal()">+ New client</button>
+        <div><h1>Call center</h1><p>Agent hours, commissions and the GoBest VIP invoice for each pay period.</p></div>
+        <div class="head-actions">
+          <select class="select" id="cc-period" onchange="setPeriod(this.value)"></select>
+          <button class="btn btn-ghost" id="cc-sync" onclick="syncSales()">Sync sales</button>
+        </div>
+      </div>
+      <div id="cc-alerts"></div>
+      <div class="stats" id="cc-stats"></div>
+
+      <div class="section-head"><h2>Agents</h2>
+        <div class="head-actions">
+          <button class="btn btn-ghost btn-sm" id="cc-copy" onclick="copyHours()">Copy hours from previous period</button>
+        </div>
+      </div>
+      <div class="card"><div class="tbl-scroll"><table>
+        <thead><tr><th class="l">Agent</th><th>Hours</th><th>Pay / hr</th><th>Hours pay</th><th>Sales</th><th>Bonus</th><th>Extra bonus</th><th>Total pay</th></tr></thead>
+        <tbody id="cc-agents"></tbody>
+        <tfoot id="cc-agents-foot"></tfoot>
+      </table></div></div>
+
+      <div class="section">
+        <div class="section-head"><h2>Rebill by call time</h2><p>Splits the invoice across venues by their share of Telnyx call minutes. Type a number to override.</p></div>
+        <div class="card"><div class="tbl-scroll"><table>
+          <thead><tr><th class="l">Client</th><th>Telnyx minutes</th><th>Minutes used</th><th>% of time</th><th>Rebill</th></tr></thead>
+          <tbody id="cc-rebill"></tbody>
+          <tfoot id="cc-rebill-foot"></tfoot>
+        </table></div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Invoice</h2>
+          <div class="head-actions" id="cc-doc-actions"></div>
+        </div>
+      </div>
+      <div class="print-target" id="cc-doc"></div>
+    </section>
+
+    <!-- SALES -->
+    <section class="page" id="page-sales">
+      <div class="page-head">
+        <div><h1>Sales</h1><p>Dispatch sales from CartVIP. Each sale needs an agent so their bonus is counted.</p></div>
+        <div class="head-actions">
+          <select class="select" id="sl-period" onchange="setPeriod(this.value)"></select>
+          <button class="btn btn-ghost" onclick="syncSales()">Sync from CartVIP</button>
+          <button class="btn btn-red" onclick="openSaleModal()">Add sale</button>
+        </div>
       </div>
       <div class="toolbar">
-        <input id="cl-search" type="text" placeholder="Search client, business, or number…" style="min-width:280px" oninput="renderClients();renderDirectory()"/>
-        <select id="cl-business" onchange="renderClients()"><option value="">All businesses</option></select>
+        <input class="input" id="sl-search" placeholder="Search guest, order or location" style="min-width:260px" oninput="renderSales()"/>
+        <select class="select" id="sl-filter" onchange="renderSales()">
+          <option value="all">All sales</option>
+          <option value="unassigned">Needs an agent</option>
+          <option value="unmatched">Location not matched</option>
+          <option value="excluded">Excluded</option>
+        </select>
+        <span class="muted small" id="sl-summary"></span>
       </div>
-      <div class="card">
-        <div class="tbl-scroll">
-          <table>
-            <thead><tr><th>Client</th><th>Business</th><th>Numbers</th><th>Rate / min</th><th>Rate / SMS</th><th></th></tr></thead>
-            <tbody id="cl-body"></tbody>
-          </table>
-        </div>
-      </div>
+      <div class="card"><div class="tbl-scroll"><table>
+        <thead><tr><th class="l">Sold</th><th class="l">Order</th><th class="l">Guest</th><th class="l">Location</th><th class="l">Package</th><th>Total</th><th class="l">Agent</th><th></th></tr></thead>
+        <tbody id="sl-body"></tbody>
+      </table></div></div>
+    </section>
 
-      <div class="page-head" style="margin-top:2rem">
-        <div><h1 style="font-size:15px">📇 Number directory</h1><p>Quick reference — which number belongs to whom.</p></div>
-      </div>
-      <div class="card">
-        <div class="tbl-scroll">
-          <table>
-            <thead><tr><th>Number</th><th>Client</th><th>Business</th></tr></thead>
-            <tbody id="dir-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- USAGE -->
-    <div class="page" id="page-usage">
+    <!-- CALLS -->
+    <section class="page" id="page-calls">
       <div class="page-head">
-        <div><h1>Usage log</h1><p>Daily minutes and texts per client. Collected automatically at 11:59 PM, or add manually.</p></div>
-        <button class="btn btn-ghost" onclick="openManualModal()">+ Add manual entry</button>
-      </div>
-      <div class="toolbar">
-        <select id="us-client" onchange="loadUsage()"><option value="">All clients</option></select>
-        <select id="us-month" onchange="loadUsage()"></select>
-      </div>
-      <div class="card">
-        <div class="tbl-scroll">
-          <table>
-            <thead><tr><th>Date</th><th>Client</th><th>Number</th><th>Minutes</th><th>Texts</th><th>Source</th></tr></thead>
-            <tbody id="us-body"></tbody>
-          </table>
+        <div><h1>Calls</h1><p>Pulled from Telnyx every night at 11:59 PM (Pacific) and re-checked at 12:20 AM.</p></div>
+        <div class="head-actions">
+          <select class="select" id="ca-month" onchange="loadCalls()"></select>
+          <input class="input" type="date" id="ca-date"/>
+          <button class="btn btn-ghost" onclick="collectDay()">Pull this day</button>
+          <button class="btn btn-ghost" onclick="openManualModal()">Add manual entry</button>
         </div>
-        <div class="empty" id="us-empty" style="display:none"><p>No usage recorded for this period yet.</p></div>
       </div>
-    </div>
+      <div class="stats" id="ca-stats"></div>
+      <div class="section-head"><h2>Daily totals</h2><p>All Telnyx numbers, including ones not assigned to a client.</p></div>
+      <div class="card"><div class="tbl-scroll"><table>
+        <thead><tr><th class="l">Date</th><th>Calls</th><th>Inbound</th><th>Outbound</th><th>Minutes</th><th>Voice cost</th><th>Texts</th><th>SMS cost</th><th>Not assigned</th></tr></thead>
+        <tbody id="ca-daily"></tbody>
+      </table></div></div>
+      <div class="section">
+        <div class="section-head"><h2>By client</h2>
+          <select class="select" id="ca-client" onchange="loadCalls()"><option value="">All clients</option></select>
+        </div>
+        <div class="card"><div class="tbl-scroll"><table>
+          <thead><tr><th class="l">Date</th><th class="l">Client</th><th class="l">Number</th><th>Calls</th><th>Minutes</th><th>Texts</th><th>Cost</th><th class="l">Source</th></tr></thead>
+          <tbody id="ca-usage"></tbody>
+        </table></div></div>
+      </div>
+    </section>
 
-    <!-- INVOICES -->
-    <div class="page" id="page-invoices">
+    <!-- RECEPTIONIST BILLING -->
+    <section class="page" id="page-billing">
       <div class="page-head">
-        <div><h1>Invoices</h1><p>Generated automatically on the 1st, or make one here anytime.</p></div>
-        <div style="display:flex;gap:.6rem">
-          <select id="in-month" class="btn-ghost" style="padding:9px 12px;border-radius:8px"></select>
-          <button class="btn btn-ghost" onclick="generateAll()">Generate all for month</button>
+        <div><h1>Receptionist billing</h1><p>Per-minute and per-text invoices for each venue line. Saved automatically on the 1st for the month before.</p></div>
+        <div class="head-actions">
+          <select class="select" id="bi-month"></select>
+          <button class="btn btn-ghost" onclick="generateAllUsage()">Save all for month</button>
         </div>
       </div>
       <div class="toolbar">
-        <select id="in-client"><option value="">Choose a client…</option></select>
-        <button class="btn btn-red btn-sm" onclick="previewInvoice()">Preview invoice</button>
+        <select class="select" id="bi-client"><option value="">Choose a client</option></select>
+        <button class="btn btn-red btn-sm" onclick="previewUsageInvoice()">Preview invoice</button>
       </div>
-      <div id="in-preview"></div>
-      <div class="card" style="margin-top:1.25rem">
-        <div class="tbl-scroll">
-          <table>
-            <thead><tr><th>Invoice</th><th>Client</th><th>Month</th><th>Minutes</th><th>Texts</th><th>Total</th><th></th></tr></thead>
-            <tbody id="in-body"></tbody>
-          </table>
-        </div>
-        <div class="empty" id="in-empty" style="display:none"><p>No saved invoices yet. Preview one above, then generate it.</p></div>
-      </div>
-    </div>
+      <div class="print-target" id="bi-doc"></div>
+      <div class="section card"><div class="tbl-scroll"><table>
+        <thead><tr><th class="l">Invoice</th><th class="l">Client</th><th class="l">Month</th><th>Calls</th><th>Minutes</th><th>Texts</th><th>Total</th><th></th></tr></thead>
+        <tbody id="bi-body"></tbody>
+      </table></div></div>
+    </section>
 
     <!-- EXPENSES -->
-    <div class="page" id="page-expenses">
+    <section class="page" id="page-expenses">
       <div class="page-head">
-        <div><h1>Expenses</h1><p>Recurring monthly costs, one-time charges, and general expenses.</p></div>
-        <div style="display:flex;gap:.6rem">
-          <select id="ex-month" class="btn-ghost" style="padding:9px 12px;border-radius:8px" onchange="loadExpenses()"></select>
-          <button class="btn btn-red" onclick="openExpenseModal()">+ New expense</button>
+        <div><h1>Expenses</h1><p>Telnyx is added automatically at month end. Add anything else here — one-time or repeating.</p></div>
+        <div class="head-actions">
+          <select class="select" id="ex-month" onchange="loadExpenses()"></select>
+          <button class="btn btn-ghost" onclick="pullTelnyxExpense()">Pull Telnyx now</button>
+          <button class="btn btn-red" onclick="openExpenseModal()">Add expense</button>
         </div>
       </div>
       <div class="stats" id="ex-stats"></div>
-      <div class="card">
-        <div class="tbl-scroll">
-          <table>
-            <thead><tr><th>Expense</th><th>Type</th><th>Applies to</th><th>Amount</th><th></th></tr></thead>
-            <tbody id="ex-body"></tbody>
-          </table>
-        </div>
-        <div class="empty" id="ex-empty" style="display:none"><p>No expenses for this month.</p></div>
+      <div class="card"><div class="tbl-scroll"><table>
+        <thead><tr><th class="l">Expense</th><th class="l">Category</th><th class="l">How often</th><th>Amount</th><th>This month</th><th></th></tr></thead>
+        <tbody id="ex-body"></tbody>
+      </table></div></div>
+    </section>
+
+    <!-- CLIENTS -->
+    <section class="page" id="page-clients">
+      <div class="page-head">
+        <div><h1>Clients</h1><p>Each venue line, its phone numbers (Twilio and Telnyx) and its billing rates.</p></div>
+        <div class="head-actions"><button class="btn btn-red" onclick="openClientModal()">Add client</button></div>
       </div>
-    </div>
+      <div class="toolbar">
+        <input class="input" id="cl-search" placeholder="Search client, business or number" style="min-width:280px" oninput="renderClients()"/>
+      </div>
+      <div class="card"><div class="tbl-scroll"><table>
+        <thead><tr><th class="l">Client</th><th class="l">Business</th><th class="l">Numbers</th><th class="l">CartVIP names</th><th>Per min</th><th>Per text</th><th></th></tr></thead>
+        <tbody id="cl-body"></tbody>
+      </table></div></div>
+    </section>
 
-  </div>
+    <!-- SETTINGS -->
+    <section class="page" id="page-settings">
+      <div class="page-head">
+        <div><h1>Settings</h1><p>Invoice details, pay rates, agents and the connections to Telnyx and CartVIP.</p></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card card-pad">
+          <h2 style="margin-bottom:.9rem">Invoice details</h2>
+          <div class="field"><label>Company</label><input id="st-co-name"/></div>
+          <div class="field"><label>Address</label><input id="st-co-address"/></div>
+          <div class="field-row">
+            <div class="field"><label>Email</label><input id="st-co-email"/></div>
+            <div class="field"><label>Phone</label><input id="st-co-phone"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Bill to</label><input id="st-bt-name"/></div>
+            <div class="field"><label>Next invoice number</label><input id="st-next-inv" inputmode="numeric"/></div>
+          </div>
+          <div class="field"><label>Bill-to contact</label><input id="st-bt-contact"/></div>
+          <div class="field"><label>Payment instructions</label><textarea id="st-terms" rows="4"></textarea><div class="hint">Printed at the bottom of every invoice. Add the ACH account and routing here.</div></div>
+          <button class="btn btn-red" onclick="saveSettings()">Save invoice details</button>
+        </div>
+
+        <div class="card card-pad">
+          <h2 style="margin-bottom:.9rem">Pay and billing rates</h2>
+          <div class="field-row">
+            <div class="field"><label>Manager pay / hour ($)</label><input id="st-r-mgr" inputmode="decimal"/></div>
+            <div class="field"><label>Agent pay / hour ($)</label><input id="st-r-agent" inputmode="decimal"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Agent bonus (% of own sales)</label><input id="st-r-abonus" inputmode="decimal"/></div>
+            <div class="field"><label>Manager bonus (% of their share)</label><input id="st-r-mbonus" inputmode="decimal"/><div class="hint">Managers split total sales equally.</div></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>WSS override / agent hour ($)</label><input id="st-r-ovr" inputmode="decimal"/></div>
+            <div class="field"><label>WSS sales override (%)</label><input id="st-r-sovr" inputmode="decimal"/></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Pay period</label>
+              <select id="st-cycle"><option value="semimonthly">Twice a month (1–14, 15–end)</option><option value="monthly">Monthly</option></select>
+            </div>
+            <div class="field"><label>Default receptionist rate</label>
+              <div class="field-row" style="gap:.5rem"><input id="st-rmin" placeholder="per min"/><input id="st-rsms" placeholder="per text"/></div>
+            </div>
+          </div>
+          <button class="btn btn-red" onclick="saveSettings()">Save rates</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Agents</h2><button class="btn btn-ghost btn-sm" onclick="openAgentModal()">Add agent</button></div>
+        <div class="card"><div class="tbl-scroll"><table>
+          <thead><tr><th class="l">Name</th><th class="l">Role</th><th>Pay / hr</th><th class="l">Also appears as</th><th class="l">Status</th><th></th></tr></thead>
+          <tbody id="st-agents"></tbody>
+        </table></div></div>
+      </div>
+
+      <div class="grid-2 section">
+        <div class="card card-pad">
+          <h2>Telnyx</h2>
+          <p class="muted small" style="margin:.3rem 0 .9rem">Calls every night at 11:59 PM and the month's cost on the last day. Set <b>TELNYX_API_KEY</b> in Railway → Variables.</p>
+          <div id="st-telnyx" class="small" style="margin-bottom:.8rem"></div>
+          <div class="head-actions">
+            <button class="btn btn-ghost btn-sm" onclick="testTelnyx()">Test connection</button>
+            <button class="btn btn-ghost btn-sm" onclick="probeTelnyx()">Show sample call records</button>
+            <button class="btn btn-ghost btn-sm" onclick="runMonthEnd()">Run month-end now</button>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <h2>CartVIP</h2>
+          <p class="muted small" style="margin:.3rem 0 .9rem">Dispatch sales sync nightly (last 3 days). Set <b>CARTVIP_API_KEY</b> in Railway → Variables.</p>
+          <div id="st-cartvip" class="small" style="margin-bottom:.8rem"></div>
+          <div class="head-actions"><button class="btn btn-ghost btn-sm" onclick="testCartvip()">Test connection</button></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Automation log</h2><button class="btn btn-ghost btn-sm" onclick="loadJobs()">Refresh</button></div>
+        <div class="card"><ul class="jobs" id="st-jobs"></ul></div>
+      </div>
+
+      <div class="section card card-pad">
+        <label class="check"><input type="checkbox" id="st-annot" onchange="toggleAnnotations(this.checked)"/> Show the feedback toolbar (draw, arrows, comments) while the dashboard is being built</label>
+      </div>
+    </section>
+  </main>
 </div>
 
-<!-- CLIENT MODAL -->
-<div class="modal-bg" id="client-modal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <h3><span id="cm-title">New client</span><button class="x" onclick="document.getElementById('client-modal').classList.remove('open')">×</button></h3>
-    <input type="hidden" id="cm-id"/>
-    <div class="field-row">
-      <div class="field"><label>Client name</label><input id="cm-name" placeholder="e.g. Hustler LV"/></div>
-      <div class="field"><label>Business / group</label><input id="cm-business" placeholder="e.g. Larry Flynt Group"/></div>
-    </div>
-    <div class="field">
-      <label>Twilio numbers</label>
-      <div class="num-list" id="cm-numbers"></div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addNumberField()">+ Add number</button>
-      <div class="hint">The phone numbers this client's calls and texts come from.</div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Rate per minute ($)</label><input id="cm-ratemin" type="text" value="0.08"/></div>
-      <div class="field"><label>Rate per SMS ($)</label><input id="cm-ratesms" type="text" value="0.01"/></div>
-    </div>
-    <div class="field"><label>Notes</label><textarea id="cm-notes" rows="2" placeholder="optional"></textarea></div>
-    <div style="display:flex;gap:.6rem;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="document.getElementById('client-modal').classList.remove('open')">Cancel</button>
-      <button class="btn btn-red" onclick="saveClient()">Save client</button>
-    </div>
+<!-- MODALS -->
+<div class="modal-bg" id="m-client"><div class="modal">
+  <div class="modal-head"><h3 id="mc-title">Add client</h3><button class="x" onclick="closeModal('m-client')">×</button></div>
+  <input type="hidden" id="mc-id"/>
+  <div class="field-row">
+    <div class="field"><label>Client name</label><input id="mc-name"/></div>
+    <div class="field"><label>Business / group</label><input id="mc-business"/></div>
   </div>
-</div>
-
-<!-- MANUAL USAGE MODAL -->
-<div class="modal-bg" id="manual-modal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <h3><span>Add manual usage</span><button class="x" onclick="document.getElementById('manual-modal').classList.remove('open')">×</button></h3>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:1rem">Use this when you pull the counts from Twilio by hand. Pick the client, the date, and enter the totals.</p>
-    <div class="field"><label>Client</label><select id="mn-client" style="width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px"></select></div>
-    <div class="field-row">
-      <div class="field"><label>Date</label><input id="mn-date" type="date"/></div>
-      <div class="field"><label>Number (optional)</label><input id="mn-number" placeholder="+1702..."/></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>Minutes</label><input id="mn-min" type="text" value="0"/></div>
-      <div class="field"><label>Texts</label><input id="mn-sms" type="text" value="0"/></div>
-    </div>
-    <div style="display:flex;gap:.6rem;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="document.getElementById('manual-modal').classList.remove('open')">Cancel</button>
-      <button class="btn btn-red" onclick="saveManual()">Add entry</button>
-    </div>
+  <div class="field"><label>Phone numbers</label><div class="list-rows" id="mc-numbers"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addListRow('mc-numbers','+1702…')">Add number</button>
+    <div class="hint">Calls to or from these numbers count for this client.</div></div>
+  <div class="field"><label>Names in CartVIP</label><input id="mc-aliases" placeholder="hustler club las vegas, hustler vegas"/><div class="hint">Comma-separated. Sales whose destination contains one of these go to this client.</div></div>
+  <div class="field-row">
+    <div class="field"><label>Rate per minute ($)</label><input id="mc-ratemin" inputmode="decimal"/></div>
+    <div class="field"><label>Rate per text ($)</label><input id="mc-ratesms" inputmode="decimal"/></div>
   </div>
-</div>
+  <div class="field"><label>Notes</label><textarea id="mc-notes" rows="2"></textarea></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-client')">Cancel</button><button class="btn btn-red" onclick="saveClient()">Save client</button></div>
+</div></div>
 
-<!-- EXPENSE MODAL -->
-<div class="modal-bg" id="expense-modal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <h3><span id="ex-title">New expense</span><button class="x" onclick="document.getElementById('expense-modal').classList.remove('open')">×</button></h3>
-    <input type="hidden" id="ex-id"/>
-    <div class="field-row">
-      <div class="field"><label>Label</label><input id="ex-label" placeholder="e.g. Railway"/></div>
-      <div class="field"><label>Amount ($)</label><input id="ex-amount" type="text" placeholder="0.00"/></div>
-    </div>
-    <div class="field">
-      <label>Type</label>
-      <select id="ex-type" style="width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px" onchange="toggleExpMonth()">
-        <option value="recurring">Recurring monthly — charged every month</option>
-        <option value="onetime">One-time — tied to a specific month</option>
-        <option value="general">General — always counted</option>
+<div class="modal-bg" id="m-manual"><div class="modal">
+  <div class="modal-head"><h3>Add manual entry</h3><button class="x" onclick="closeModal('m-manual')">×</button></div>
+  <p class="muted small" style="margin-bottom:1rem">For calls that didn't come through Telnyx (Twilio backup, another platform).</p>
+  <div class="field"><label>Client</label><select id="mn-client"></select></div>
+  <div class="field-row">
+    <div class="field"><label>Date</label><input id="mn-date" type="date"/></div>
+    <div class="field"><label>Number (optional)</label><input id="mn-number" placeholder="+1702…"/></div>
+  </div>
+  <div class="field-row three">
+    <div class="field"><label>Calls</label><input id="mn-calls" inputmode="numeric" value="0"/></div>
+    <div class="field"><label>Minutes</label><input id="mn-min" inputmode="numeric" value="0"/></div>
+    <div class="field"><label>Texts</label><input id="mn-sms" inputmode="numeric" value="0"/></div>
+  </div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-manual')">Cancel</button><button class="btn btn-red" onclick="saveManual()">Add entry</button></div>
+</div></div>
+
+<div class="modal-bg" id="m-expense"><div class="modal">
+  <div class="modal-head"><h3 id="me-title">Add expense</h3><button class="x" onclick="closeModal('m-expense')">×</button></div>
+  <input type="hidden" id="me-id"/>
+  <div class="field-row">
+    <div class="field"><label>Name</label><input id="me-label" placeholder="Railway"/></div>
+    <div class="field"><label>Amount ($)</label><input id="me-amount" inputmode="decimal" placeholder="0.00"/></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>How often</label>
+      <select id="me-freq" onchange="toggleExpenseFields()">
+        <option value="once">One time</option>
+        <option value="weekly">Every week</option>
+        <option value="biweekly">Every 2 weeks</option>
+        <option value="monthly">Every month</option>
+        <option value="quarterly">Every 3 months</option>
+        <option value="yearly">Every year</option>
+        <option value="custom">Every … months</option>
       </select>
     </div>
-    <div class="field" id="ex-month-field" style="display:none">
-      <label>Which month</label>
-      <select id="ex-month-pick" style="width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px"></select>
+    <div class="field"><label>Category</label><input id="me-category" list="me-cats" placeholder="Software"/>
+      <datalist id="me-cats"><option>Software</option><option>Telecom</option><option>AI platform</option><option>Payroll</option><option>Office</option><option>Marketing</option><option>Fees</option></datalist></div>
+  </div>
+  <div class="field hidden" id="me-every-wrap"><label>Repeat every (months)</label><input id="me-every" inputmode="numeric" value="2"/></div>
+  <div class="field-row">
+    <div class="field"><label id="me-start-label">Date</label><input id="me-start" type="date"/></div>
+    <div class="field" id="me-end-wrap"><label>Ends</label><input id="me-end" type="date"/><div class="hint">Leave empty if it keeps going.</div></div>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="me-notes" rows="2"></textarea></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-expense')">Cancel</button><button class="btn btn-red" onclick="saveExpense()">Save expense</button></div>
+</div></div>
+
+<div class="modal-bg" id="m-breakdown"><div class="modal">
+  <div class="modal-head"><h3 id="mb-title">Telnyx</h3><button class="x" onclick="closeModal('m-breakdown')">×</button></div>
+  <div id="mb-body"></div>
+  <div class="modal-foot"><button class="btn btn-ghost left" id="mb-resync">Pull again</button><button class="btn btn-ink" onclick="closeModal('m-breakdown')">Done</button></div>
+</div></div>
+
+<div class="modal-bg" id="m-sale"><div class="modal">
+  <div class="modal-head"><h3 id="ms-title">Sale</h3><button class="x" onclick="closeModal('m-sale')">×</button></div>
+  <input type="hidden" id="ms-id"/>
+  <div id="ms-manual-fields">
+    <div class="field-row">
+      <div class="field"><label>Order number</label><input id="ms-conf" placeholder="#1234"/></div>
+      <div class="field"><label>Total ($)</label><input id="ms-total" inputmode="decimal"/></div>
     </div>
-    <div style="display:flex;gap:.6rem;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="document.getElementById('expense-modal').classList.remove('open')">Cancel</button>
-      <button class="btn btn-red" onclick="saveExpense()">Save expense</button>
+    <div class="field-row">
+      <div class="field"><label>Guest</label><input id="ms-customer"/></div>
+      <div class="field"><label>Package</label><input id="ms-package"/></div>
     </div>
   </div>
-</div>
+  <div id="ms-info" class="small muted" style="margin-bottom:1rem"></div>
+  <div class="field-row">
+    <div class="field"><label>Sold on</label><input id="ms-soldon" type="date"/><div class="hint">Decides which pay period it counts in.</div></div>
+    <div class="field"><label>Location</label><select id="ms-client"></select></div>
+  </div>
+  <div class="field"><label>Agents</label>
+    <div class="list-rows" id="ms-credits"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addCreditRow()">Add agent</button>
+    <div class="hint">With two or more agents, leave the amount empty to split evenly.</div>
+  </div>
+  <label class="check"><input type="checkbox" id="ms-excluded"/> Exclude from commissions and the invoice (refund, cancellation, duplicate)</label>
+  <div class="modal-foot">
+    <button class="btn btn-ghost left hidden" id="ms-delete" onclick="deleteSale()">Delete</button>
+    <button class="btn btn-ghost" onclick="closeModal('m-sale')">Cancel</button>
+    <button class="btn btn-red" onclick="saveSale()">Save sale</button>
+  </div>
+</div></div>
 
-<script>
-  var API = window.location.origin;
-  var CURRENT = null;
-  var CLIENTS = [];
+<div class="modal-bg" id="m-agent"><div class="modal">
+  <div class="modal-head"><h3 id="ma-title">Add agent</h3><button class="x" onclick="closeModal('m-agent')">×</button></div>
+  <input type="hidden" id="ma-id"/>
+  <div class="field-row">
+    <div class="field"><label>Name</label><input id="ma-name"/></div>
+    <div class="field"><label>Role</label><select id="ma-role"><option value="agent">Agent</option><option value="manager">Manager</option></select></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>Pay / hour ($)</label><input id="ma-rate" inputmode="decimal" placeholder="Default"/><div class="hint">Empty uses the default for the role.</div></div>
+    <div class="field"><label>Status</label><select id="ma-active"><option value="1">Active</option><option value="0">Inactive</option></select></div>
+  </div>
+  <div class="field"><label>Also appears as</label><input id="ma-aliases" placeholder="josh, joshua"/><div class="hint">Other names CartVIP may use for this agent, comma-separated.</div></div>
+  <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-agent')">Cancel</button><button class="btn btn-red" onclick="saveAgent()">Save agent</button></div>
+</div></div>
 
-  var money = function(n){ return '$' + (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
-  var intf = function(n){ return (Number(n)||0).toLocaleString('en-US'); };
-  var num = function(v){ var n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
+<div class="modal-bg" id="m-info"><div class="modal wide">
+  <div class="modal-head"><h3 id="mi-title"></h3><button class="x" onclick="closeModal('m-info')">×</button></div>
+  <div id="mi-body"></div>
+</div></div>
 
-  function monthOptions(sel, months){
-    var now = new Date();
-    var opts = [];
-    for (var i=0;i<12;i++){
-      var d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-      var key = d.toISOString().slice(0,7);
-      var label = d.toLocaleString('en-US',{month:'long',year:'numeric'});
-      opts.push('<option value="'+key+'">'+label+'</option>');
-    }
-    sel.innerHTML = opts.join('');
-  }
+<div id="toast"></div>
 
-  // ---- Auth ----
-  async function doLogin(){
-    var u=document.getElementById('lg-user').value.trim();
-    var p=document.getElementById('lg-pass').value;
-    try{
-      var r=await fetch(API+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-      if(!r.ok){ document.getElementById('lg-err').style.display='block'; return; }
-      CURRENT=await r.json();
-      localStorage.setItem('wv-sess',JSON.stringify({u:u,p:p}));
-      enterApp();
-    }catch(e){ document.getElementById('lg-err').style.display='block'; }
-  }
-  function doLogout(){ localStorage.removeItem('wv-sess'); location.reload(); }
-
-  async function enterApp(){
-    document.getElementById('login').style.display='none';
-    document.getElementById('app').style.display='block';
-    document.getElementById('who').textContent = CURRENT.name || CURRENT.username;
-    // month selectors
-    ['ov-month','us-month','in-month','ex-month','ex-month-pick'].forEach(function(id){ monthOptions(document.getElementById(id)); });
-    await checkStatus();
-    await loadClients();
-    await loadOverview();
-  }
-
-  async function checkStatus(){
-    try{
-      var s=await (await fetch(API+'/status')).json();
-      var el=document.getElementById('tw-status');
-      if(s.twilioConfigured){ el.classList.remove('off'); el.innerHTML='<i></i> Twilio connected'; }
-      else { el.classList.add('off'); el.innerHTML='<i></i> Twilio not set'; }
-    }catch(e){}
-  }
-
-  // ---- Navigation ----
-  function showPage(name, btn){
-    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
-    document.getElementById('page-'+name).classList.add('active');
-    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
-    if(btn) btn.classList.add('active');
-    if(name==='clients') loadClients();
-    if(name==='usage') loadUsage();
-    if(name==='invoices') loadInvoices();
-    if(name==='expenses') loadExpenses();
-    if(name==='overview') loadOverview();
-  }
-
-  // ---- Clients ----
-  async function loadClients(){
-    CLIENTS = await (await fetch(API+'/clients')).json();
-    // populate business filter
-    var businesses = Array.from(new Set(CLIENTS.map(function(c){return c.business;}).filter(Boolean))).sort();
-    var bsel=document.getElementById('cl-business');
-    if(bsel){ var cur=bsel.value; bsel.innerHTML='<option value="">All businesses</option>'+businesses.map(function(b){return '<option value="'+b+'">'+b+'</option>';}).join(''); bsel.value=cur; }
-    renderClients();
-    renderDirectory();
-    // populate selectors elsewhere
-    var opts='<option value="">All clients</option>'+CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
-    document.getElementById('us-client').innerHTML=opts;
-    document.getElementById('in-client').innerHTML='<option value="">Choose a client…</option>'+CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
-    document.getElementById('mn-client').innerHTML=CLIENTS.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
-  }
-
-  function renderClients(){
-    var q=(document.getElementById('cl-search').value||'').toLowerCase();
-    var biz=document.getElementById('cl-business').value;
-    var body=document.getElementById('cl-body');
-    var filtered=CLIENTS.filter(function(c){
-      if(biz && c.business!==biz) return false;
-      if(!q) return true;
-      var hay=(c.name+' '+(c.business||'')+' '+(c.numbers||[]).join(' ')).toLowerCase();
-      return hay.indexOf(q)>=0;
-    });
-    body.innerHTML = filtered.length ? filtered.map(function(c){
-      return '<tr>'+
-        '<td>'+c.name+'</td>'+
-        '<td class="muted">'+(c.business||'—')+'</td>'+
-        '<td class="right">'+(c.numbers&&c.numbers.length?c.numbers.map(function(n){return '<span class="pill pill-num">'+n+'</span>';}).join(' '):'<span class="muted">none</span>')+'</td>'+
-        '<td>$'+(c.rateMin!=null?c.rateMin:0.08).toFixed(3)+'</td>'+
-        '<td>$'+(c.rateSms!=null?c.rateSms:0.01).toFixed(3)+'</td>'+
-        '<td class="right"><button class="btn btn-ghost btn-sm" onclick="editClient(\''+c.id+'\')">Edit</button> '+
-          '<button class="btn btn-ghost btn-sm" onclick="delClient(\''+c.id+'\')">Delete</button></td>'+
-      '</tr>';
-    }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:2rem">No clients match.</td></tr>';
-  }
-
-  async function renderDirectory(){
-    try{
-      var dir=await (await fetch(API+'/numbers')).json();
-      var q=(document.getElementById('cl-search').value||'').toLowerCase();
-      if(q) dir=dir.filter(function(d){ return (d.number+' '+d.clientName+' '+d.business).toLowerCase().indexOf(q)>=0; });
-      var body=document.getElementById('dir-body');
-      body.innerHTML=dir.length?dir.map(function(d){
-        return '<tr><td><span class="pill pill-num">'+d.number+'</span></td><td>'+d.clientName+'</td><td class="muted">'+(d.business||'—')+'</td></tr>';
-      }).join(''):'<tr><td colspan="3" class="muted" style="text-align:center;padding:1.5rem">No numbers yet.</td></tr>';
-    }catch(e){}
-  }
-
-  function addNumberField(val){
-    var wrap=document.getElementById('cm-numbers');
-    var div=document.createElement('div');
-    div.className='num-item';
-    div.innerHTML='<input placeholder="+1702..." value="'+(val||'')+'"/><button onclick="this.parentNode.remove()">✕</button>';
-    wrap.appendChild(div);
-  }
-  function openClientModal(){
-    document.getElementById('cm-title').textContent='New client';
-    document.getElementById('cm-id').value='';
-    document.getElementById('cm-name').value='';
-    document.getElementById('cm-business').value='';
-    document.getElementById('cm-ratemin').value='0.08';
-    document.getElementById('cm-ratesms').value='0.01';
-    document.getElementById('cm-notes').value='';
-    document.getElementById('cm-numbers').innerHTML='';
-    addNumberField();
-    document.getElementById('client-modal').classList.add('open');
-  }
-  function editClient(id){
-    var c=CLIENTS.find(function(x){return x.id===id;}); if(!c) return;
-    document.getElementById('cm-title').textContent='Edit client';
-    document.getElementById('cm-id').value=c.id;
-    document.getElementById('cm-name').value=c.name;
-    document.getElementById('cm-business').value=c.business||'';
-    document.getElementById('cm-ratemin').value=(c.rateMin!=null?c.rateMin:0.08);
-    document.getElementById('cm-ratesms').value=(c.rateSms!=null?c.rateSms:0.01);
-    document.getElementById('cm-notes').value=c.notes||'';
-    document.getElementById('cm-numbers').innerHTML='';
-    (c.numbers&&c.numbers.length?c.numbers:['']).forEach(function(n){ addNumberField(n); });
-    document.getElementById('client-modal').classList.add('open');
-  }
-  async function saveClient(){
-    var id=document.getElementById('cm-id').value;
-    var numbers=[].slice.call(document.querySelectorAll('#cm-numbers input')).map(function(i){return i.value.trim();}).filter(Boolean);
-    var payload={
-      name:document.getElementById('cm-name').value.trim(),
-      business:document.getElementById('cm-business').value.trim(),
-      numbers:numbers,
-      rateMin:num(document.getElementById('cm-ratemin').value),
-      rateSms:num(document.getElementById('cm-ratesms').value),
-      notes:document.getElementById('cm-notes').value.trim()
-    };
-    if(!payload.name){ alert('Client name is required'); return; }
-    if(id){ await fetch(API+'/clients/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
-    else { await fetch(API+'/clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
-    document.getElementById('client-modal').classList.remove('open');
-    await loadClients();
-  }
-  async function delClient(id){
-    if(!confirm('Delete this client? Usage history stays but the client is removed.')) return;
-    await fetch(API+'/clients/'+id,{method:'DELETE'});
-    await loadClients();
-  }
-
-  // ---- Overview ----
-  async function loadOverview(){
-    var month=document.getElementById('ov-month').value;
-    document.getElementById('ov-sub').textContent='Billing summary for '+new Date(month+'-02').toLocaleString('en-US',{month:'long',year:'numeric'});
-    var usage=await (await fetch(API+'/usage?month='+month)).json();
-    if(!CLIENTS.length) CLIENTS=await (await fetch(API+'/clients')).json();
-
-    var byClient={};
-    CLIENTS.forEach(function(c){ byClient[c.id]={name:c.name,min:0,sms:0,rateMin:c.rateMin!=null?c.rateMin:0.08,rateSms:c.rateSms!=null?c.rateSms:0.01}; });
-    usage.forEach(function(u){ if(!byClient[u.clientId]) byClient[u.clientId]={name:u.clientName,min:0,sms:0,rateMin:0.08,rateSms:0.01}; byClient[u.clientId].min+=u.minutes||0; byClient[u.clientId].sms+=u.sms||0; });
-
-    var totMin=0,totSms=0,totRev=0;
-    var rows=Object.keys(byClient).map(function(id){
-      var c=byClient[id];
-      var cMin=c.min*c.rateMin, cSms=c.sms*c.rateSms, t=cMin+cSms;
-      totMin+=c.min; totSms+=c.sms; totRev+=t;
-      return {name:c.name,min:c.min,sms:c.sms,cMin:cMin,cSms:cSms,t:t};
-    }).sort(function(a,b){return b.t-a.t;});
-
-    document.getElementById('ov-stats').innerHTML =
-      stat('Total minutes',intf(totMin))+
-      stat('Total texts',intf(totSms))+
-      stat('Clients',intf(CLIENTS.length))+
-      stat('Billable this month',money(totRev),true);
-
-    document.getElementById('ov-body').innerHTML = rows.length? rows.map(function(r){
-      return '<tr><td>'+r.name+'</td><td>'+intf(r.min)+'</td><td>'+intf(r.sms)+'</td><td>'+money(r.cMin)+'</td><td>'+money(r.cSms)+'</td><td><strong>'+money(r.t)+'</strong></td></tr>';
-    }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:2rem">No usage for this month yet.</td></tr>';
-  }
-  function stat(k,v,red){ return '<div class="stat"><div class="k">'+k+'</div><div class="v'+(red?' red':'')+'">'+v+'</div></div>'; }
-
-  async function collectNow(){
-    if(!confirm('Pull today\'s usage from Twilio now?')) return;
-    try{
-      var r=await fetch(API+'/collect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
-      var d=await r.json();
-      if(d.error){ alert('Error: '+d.error); return; }
-      alert('Collected '+d.entries+' entries for '+d.date);
-      loadOverview();
-    }catch(e){ alert('Failed: '+e.message); }
-  }
-
-  // ---- Usage ----
-  async function loadUsage(){
-    var client=document.getElementById('us-client').value;
-    var month=document.getElementById('us-month').value;
-    var q='?month='+month+(client?'&clientId='+client:'');
-    var usage=await (await fetch(API+'/usage'+q)).json();
-    usage.sort(function(a,b){return b.date.localeCompare(a.date);});
-    var body=document.getElementById('us-body');
-    document.getElementById('us-empty').style.display=usage.length?'none':'block';
-    body.innerHTML=usage.map(function(u){
-      return '<tr><td>'+u.date+'</td><td>'+u.clientName+'</td><td><span class="pill pill-num">'+u.number+'</span></td><td>'+intf(u.minutes)+'</td><td>'+intf(u.sms)+'</td><td class="muted">'+(u.manual?'manual':'Twilio')+'</td></tr>';
-    }).join('');
-  }
-
-  function openManualModal(){
-    if(!CLIENTS.length){ alert('Create a client first.'); return; }
-    document.getElementById('mn-date').value=new Date().toISOString().slice(0,10);
-    document.getElementById('mn-number').value='';
-    document.getElementById('mn-min').value='0';
-    document.getElementById('mn-sms').value='0';
-    document.getElementById('manual-modal').classList.add('open');
-  }
-  async function saveManual(){
-    var payload={
-      clientId:document.getElementById('mn-client').value,
-      date:document.getElementById('mn-date').value,
-      number:document.getElementById('mn-number').value.trim(),
-      minutes:num(document.getElementById('mn-min').value),
-      sms:num(document.getElementById('mn-sms').value)
-    };
-    await fetch(API+'/usage/manual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    document.getElementById('manual-modal').classList.remove('open');
-    loadUsage(); loadOverview();
-  }
-
-  // ---- Invoices ----
-  async function loadInvoices(){
-    var invoices=await (await fetch(API+'/invoices')).json();
-    invoices.sort(function(a,b){return (b.month+b.clientName).localeCompare(a.month+a.clientName);});
-    var body=document.getElementById('in-body');
-    document.getElementById('in-empty').style.display=invoices.length?'none':'block';
-    body.innerHTML=invoices.map(function(i){
-      return '<tr><td>'+i.id+'</td><td>'+i.clientName+'</td><td>'+i.month+'</td><td>'+intf(i.totalMinutes)+'</td><td>'+intf(i.totalSms)+'</td><td><strong>'+money(i.total)+'</strong></td>'+
-        '<td class="right"><button class="btn btn-ghost btn-sm" onclick=\'renderInvoiceDoc('+JSON.stringify(i).replace(/'/g,"&#39;")+')\'>View</button></td></tr>';
-    }).join('');
-  }
-
-  async function previewInvoice(){
-    var clientId=document.getElementById('in-client').value;
-    var month=document.getElementById('in-month').value;
-    if(!clientId){ alert('Choose a client'); return; }
-    var inv=await (await fetch(API+'/invoices/preview?clientId='+clientId+'&month='+month)).json();
-    if(inv.error){ alert(inv.error); return; }
-    renderInvoiceDoc(inv, true);
-  }
-
-  function renderInvoiceDoc(inv, isPreview){
-    var html='<div class="inv-doc">'+
-      '<div class="inv-head">'+
-        '<div class="brand">Winning<span class="mark">Vocal</span></div>'+
-        '<div class="meta"><strong>Invoice</strong>'+(inv.id?('#'+inv.id):' (preview)')+'<br>'+new Date(inv.month+"-02").toLocaleString("en-US",{month:"long",year:"numeric"})+'</div>'+
-      '</div>'+
-      '<div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Billed to <strong style="color:var(--ink)">'+inv.clientName+'</strong></div>'+
-      '<div class="inv-line"><div>Voice minutes<div class="calc">'+intf(inv.totalMinutes)+' min × $'+inv.rateMin.toFixed(3)+'</div></div><div>'+money(inv.costMinutes)+'</div></div>'+
-      '<div class="inv-line"><div>Text messages<div class="calc">'+intf(inv.totalSms)+' texts × $'+inv.rateSms.toFixed(3)+'</div></div><div>'+money(inv.costSms)+'</div></div>'+
-      '<div class="inv-total"><div class="l">Total due</div><div class="v">'+money(inv.total)+'</div></div>'+
-      '<div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.5rem">'+
-        (isPreview?'<button class="btn btn-red" onclick="generateInvoice(\''+inv.clientId+'\',\''+inv.month+'\')">Save this invoice</button>':'')+
-        '<button class="btn btn-ghost" onclick="window.print()">Print / PDF</button>'+
-      '</div>'+
-    '</div>';
-    document.getElementById('in-preview').innerHTML=html;
-    document.getElementById('in-preview').scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
-
-  async function generateInvoice(clientId, month){
-    var inv=await (await fetch(API+'/invoices/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:clientId,month:month})})).json();
-    alert('Invoice saved: '+inv.id);
-    loadInvoices();
-  }
-  async function generateAll(){
-    var month=document.getElementById('in-month').value;
-    if(!confirm('Generate invoices for ALL clients for '+month+'?')) return;
-    await fetch(API+'/invoices/generate-all',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({month:month})});
-    loadInvoices();
-  }
-
-  // ---- Expenses ----
-  var EXPENSES=[];
-  async function loadExpenses(){
-    var month=document.getElementById('ex-month').value;
-    EXPENSES=await (await fetch(API+'/expenses?month='+month)).json();
-    var typeLabel={recurring:'Recurring',onetime:'One-time',general:'General'};
-    var total=EXPENSES.reduce(function(a,e){return a+(e.amount||0);},0);
-    var recur=EXPENSES.filter(function(e){return e.type==='recurring';}).reduce(function(a,e){return a+e.amount;},0);
-    document.getElementById('ex-stats').innerHTML=
-      stat('Recurring / month',money(recur))+
-      stat('This month total',money(total),true);
-    var body=document.getElementById('ex-body');
-    document.getElementById('ex-empty').style.display=EXPENSES.length?'none':'block';
-    body.innerHTML=EXPENSES.map(function(e){
-      var applies=e.type==='onetime'?e.month:(e.type==='recurring'?'Every month':'Always');
-      return '<tr><td>'+e.label+'</td><td><span class="pill '+(e.type==='recurring'?'pill-num':'')+'">'+typeLabel[e.type]+'</span></td>'+
-        '<td class="muted">'+applies+'</td><td><strong>'+money(e.amount)+'</strong></td>'+
-        '<td class="right"><button class="btn btn-ghost btn-sm" onclick="editExpense(\''+e.id+'\')">Edit</button> '+
-        '<button class="btn btn-ghost btn-sm" onclick="delExpense(\''+e.id+'\')">Delete</button></td></tr>';
-    }).join('');
-  }
-  function toggleExpMonth(){
-    var t=document.getElementById('ex-type').value;
-    document.getElementById('ex-month-field').style.display=(t==='onetime')?'block':'none';
-  }
-  function openExpenseModal(){
-    document.getElementById('ex-title').textContent='New expense';
-    document.getElementById('ex-id').value='';
-    document.getElementById('ex-label').value='';
-    document.getElementById('ex-amount').value='';
-    document.getElementById('ex-type').value='recurring';
-    document.getElementById('ex-month-pick').value=document.getElementById('ex-month').value;
-    toggleExpMonth();
-    document.getElementById('expense-modal').classList.add('open');
-  }
-  function editExpense(id){
-    var e=EXPENSES.find(function(x){return x.id===id;}); if(!e) return;
-    document.getElementById('ex-title').textContent='Edit expense';
-    document.getElementById('ex-id').value=e.id;
-    document.getElementById('ex-label').value=e.label;
-    document.getElementById('ex-amount').value=e.amount;
-    document.getElementById('ex-type').value=e.type;
-    if(e.month) document.getElementById('ex-month-pick').value=e.month;
-    toggleExpMonth();
-    document.getElementById('expense-modal').classList.add('open');
-  }
-  async function saveExpense(){
-    var id=document.getElementById('ex-id').value;
-    var payload={
-      label:document.getElementById('ex-label').value.trim(),
-      amount:num(document.getElementById('ex-amount').value),
-      type:document.getElementById('ex-type').value,
-      month:document.getElementById('ex-month-pick').value
-    };
-    if(!payload.label){ alert('Label is required'); return; }
-    if(id){ await fetch(API+'/expenses/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
-    else { await fetch(API+'/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); }
-    document.getElementById('expense-modal').classList.remove('open');
-    loadExpenses();
-  }
-  async function delExpense(id){
-    if(!confirm('Delete this expense?')) return;
-    await fetch(API+'/expenses/'+id,{method:'DELETE'});
-    loadExpenses();
-  }
-
-  // ---- boot ----
-  ['lg-user','lg-pass'].forEach(function(id){ document.getElementById(id).addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(); }); });
-  (async function(){
-    var s=localStorage.getItem('wv-sess');
-    if(s){ try{ var d=JSON.parse(s); document.getElementById('lg-user').value=d.u; document.getElementById('lg-pass').value=d.p; await doLogin(); }catch(e){} }
-  })();
-</script>
+<script src="/app.js"></script>
+<script src="/annotate.js"></script>
 </body>
 </html>
