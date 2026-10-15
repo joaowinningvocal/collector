@@ -31,7 +31,10 @@
     <div class="mast-right">
       <button class="sync-chip" id="chip-telnyx" onclick="showPage('settings')"><i></i>Telnyx</button>
       <button class="sync-chip" id="chip-cartvip" onclick="showPage('settings')"><i></i>CartVIP</button>
+<<<<<<< HEAD
       <button class="sync-chip" id="chip-aloware" onclick="showPage('settings')"><i></i>Aloware</button>
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
       <span id="who"></span>
       <button class="link-btn" onclick="doLogout()">Sign out</button>
     </div>
@@ -42,7 +45,11 @@
     <button class="tab" data-page="callcenter">Call center</button>
     <button class="tab" data-page="sales">Sales <span class="count hidden" id="unassigned-count"></span></button>
     <button class="tab" data-page="calls">Calls</button>
+<<<<<<< HEAD
     <button class="tab" data-page="billing">Venue invoices</button>
+=======
+    <button class="tab" data-page="billing">Receptionist billing</button>
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     <button class="tab" data-page="expenses">Expenses</button>
     <button class="tab" data-page="clients">Clients</button>
     <button class="tab" data-page="settings">Settings</button>
@@ -75,6 +82,7 @@
         </div>
       </div>
       <div class="section">
+<<<<<<< HEAD
         <div class="section-head"><h2>Sales by venue</h2><p>CartVIP dispatch sales this month.</p></div>
         <div class="card"><div class="tbl-scroll"><table>
           <thead><tr><th class="l">Venue</th><th>Orders</th><th>Sales</th><th>Avg order</th></tr></thead>
@@ -88,6 +96,14 @@
           <tbody id="ov-clients"></tbody>
         </table></div></div>
       </div>
+=======
+        <div class="section-head"><h2>Receptionist billing by client</h2><p id="ov-calls-note"></p></div>
+        <div class="card"><div class="tbl-scroll"><table>
+          <thead><tr><th class="l">Client</th><th>Calls</th><th>Minutes</th><th>Texts</th><th>Billed</th></tr></thead>
+          <tbody id="ov-clients"></tbody>
+        </table></div></div>
+      </div>
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     </section>
 
     <!-- CALL CENTER -->
@@ -108,21 +124,34 @@
         </div>
       </div>
       <div class="card"><div class="tbl-scroll"><table>
+<<<<<<< HEAD
         <thead><tr><th class="l">Agent</th><th>Hours</th><th>Pay / hr</th><th>Hours pay</th><th>Sales</th><th title="Sales divided by what their hours are billed at (pay + WSS override)">Sales ÷ billed hours</th><th>Bonus</th><th>Extra bonus</th><th>Total pay</th></tr></thead>
+=======
+        <thead><tr><th class="l">Agent</th><th>Hours</th><th>Pay / hr</th><th>Hours pay</th><th>Sales</th><th>Bonus</th><th>Extra bonus</th><th>Total pay</th></tr></thead>
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
         <tbody id="cc-agents"></tbody>
         <tfoot id="cc-agents-foot"></tfoot>
       </table></div></div>
 
       <div class="section">
+<<<<<<< HEAD
         <div class="section-head"><h2>Sales by venue</h2><p id="cc-venues-note"></p></div>
         <div class="card"><div class="tbl-scroll"><table>
           <thead><tr><th class="l">Venue</th><th>Orders</th><th>Sales</th><th>Avg order</th><th>% of sales</th></tr></thead>
           <tbody id="cc-venues"></tbody>
           <tfoot id="cc-venues-foot"></tfoot>
+=======
+        <div class="section-head"><h2>Rebill by call time</h2><p>Splits the invoice across venues by their share of Telnyx call minutes. Type a number to override.</p></div>
+        <div class="card"><div class="tbl-scroll"><table>
+          <thead><tr><th class="l">Client</th><th>Telnyx minutes</th><th>Minutes used</th><th>% of time</th><th>Rebill</th></tr></thead>
+          <tbody id="cc-rebill"></tbody>
+          <tfoot id="cc-rebill-foot"></tfoot>
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
         </table></div></div>
       </div>
 
       <div class="section">
+<<<<<<< HEAD
         <div class="section-head"><h2>Rebill by Aloware line</h2>
           <div class="head-actions"><label class="small muted" for="cc-basis">Split by</label>
             <select class="select" id="cc-basis" onchange="setRebillBasis(this.value)"><option value="time">Call time</option><option value="activities">Activities</option></select></div>
@@ -136,6 +165,8 @@
       </div>
 
       <div class="section">
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
         <div class="section-head"><h2>Invoice</h2>
           <div class="head-actions" id="cc-doc-actions"></div>
         </div>
@@ -161,7 +192,10 @@
           <option value="unmatched">Location not matched</option>
           <option value="excluded">Excluded</option>
         </select>
+<<<<<<< HEAD
         <select class="select" id="sl-venue" onchange="renderSales()"><option value="">All venues</option></select>
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
         <span class="muted small" id="sl-summary"></span>
       </div>
       <div class="card"><div class="tbl-scroll"><table>
@@ -198,6 +232,7 @@
       </div>
     </section>
 
+<<<<<<< HEAD
     <!-- VENUE INVOICES -->
     <section class="page" id="page-billing">
       <div class="page-head">
@@ -224,6 +259,26 @@
           <tbody id="bi-body"></tbody>
         </table></div></div>
       </div>
+=======
+    <!-- RECEPTIONIST BILLING -->
+    <section class="page" id="page-billing">
+      <div class="page-head">
+        <div><h1>Receptionist billing</h1><p>Per-minute and per-text invoices for each venue line. Saved automatically on the 1st for the month before.</p></div>
+        <div class="head-actions">
+          <select class="select" id="bi-month"></select>
+          <button class="btn btn-ghost" onclick="generateAllUsage()">Save all for month</button>
+        </div>
+      </div>
+      <div class="toolbar">
+        <select class="select" id="bi-client"><option value="">Choose a client</option></select>
+        <button class="btn btn-red btn-sm" onclick="previewUsageInvoice()">Preview invoice</button>
+      </div>
+      <div class="print-target" id="bi-doc"></div>
+      <div class="section card"><div class="tbl-scroll"><table>
+        <thead><tr><th class="l">Invoice</th><th class="l">Client</th><th class="l">Month</th><th>Calls</th><th>Minutes</th><th>Texts</th><th>Total</th><th></th></tr></thead>
+        <tbody id="bi-body"></tbody>
+      </table></div></div>
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     </section>
 
     <!-- EXPENSES -->
@@ -297,6 +352,7 @@
             <div class="field"><label>WSS sales override (%)</label><input id="st-r-sovr" inputmode="decimal"/></div>
           </div>
           <div class="field-row">
+<<<<<<< HEAD
             <div class="field"><label>Sales should cover (× billed hours)</label><input id="st-r-minmult" inputmode="decimal"/><div class="hint">Flags agents whose sales are below this many times what their hours are billed at. 1 = break even.</div></div>
             <div class="field"><label>Rebill split</label><select id="st-basis"><option value="time">By call time</option><option value="activities">By activities</option></select><div class="hint">How the call-center invoice is split across Aloware lines.</div></div>
           </div>
@@ -305,6 +361,8 @@
             <div class="field"><label>Call-center invoice name</label><input id="st-brand-cc"/></div>
           </div>
           <div class="field-row">
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
             <div class="field"><label>Pay period</label>
               <select id="st-cycle"><option value="semimonthly">Twice a month (1–14, 15–end)</option><option value="monthly">Monthly</option></select>
             </div>
@@ -344,6 +402,7 @@
       </div>
 
       <div class="section">
+<<<<<<< HEAD
         <div class="section-head"><h2>Aloware lines</h2><button class="btn btn-ghost btn-sm" onclick="openLineModal()">Add line</button></div>
         <p class="muted small" style="margin:-.3rem 0 .7rem">The rows of the rebill. Lines that show up from the Aloware webhook appear here automatically — name them and link them to a venue.</p>
         <div class="card"><div class="tbl-scroll"><table>
@@ -358,6 +417,8 @@
       </div>
 
       <div class="section">
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
         <div class="section-head"><h2>Automation log</h2><button class="btn btn-ghost btn-sm" onclick="loadJobs()">Refresh</button></div>
         <div class="card"><ul class="jobs" id="st-jobs"></ul></div>
       </div>
@@ -380,7 +441,10 @@
   <div class="field"><label>Phone numbers</label><div class="list-rows" id="mc-numbers"></div>
     <button class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="addListRow('mc-numbers','+1702…')">Add number</button>
     <div class="hint">Calls to or from these numbers count for this client.</div></div>
+<<<<<<< HEAD
   <div class="field"><label>Billing contact</label><input id="mc-billing" placeholder="Name, email or address printed on this venue's invoices"/></div>
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   <div class="field"><label>Names in CartVIP</label><input id="mc-aliases" placeholder="hustler club las vegas, hustler vegas"/><div class="hint">Comma-separated. Sales whose destination contains one of these go to this client.</div></div>
   <div class="field-row">
     <div class="field"><label>Rate per minute ($)</label><input id="mc-ratemin" inputmode="decimal"/></div>
@@ -489,6 +553,7 @@
   <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('m-agent')">Cancel</button><button class="btn btn-red" onclick="saveAgent()">Save agent</button></div>
 </div></div>
 
+<<<<<<< HEAD
 <div class="modal-bg" id="m-line"><div class="modal">
   <div class="modal-head"><h3 id="ml-title">Add line</h3><button class="x" onclick="closeModal('m-line')">×</button></div>
   <input type="hidden" id="ml-id"/>
@@ -509,6 +574,15 @@
 
 <div id="toast"></div>
 
+=======
+<div class="modal-bg" id="m-info"><div class="modal wide">
+  <div class="modal-head"><h3 id="mi-title"></h3><button class="x" onclick="closeModal('m-info')">×</button></div>
+  <div id="mi-body"></div>
+</div></div>
+
+<div id="toast"></div>
+
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 <script src="/app.js"></script>
 <script src="/annotate.js"></script>
 </body>

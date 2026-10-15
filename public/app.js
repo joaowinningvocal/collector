@@ -107,7 +107,10 @@ async function loadStatus() {
   };
   chip('chip-telnyx', STATUS.telnyx, STATUS.telnyx ? 'Telnyx' + (STATUS.lastCollected ? ' · calls to ' + fmtDate(STATUS.lastCollected) : '') : 'Telnyx not set');
   chip('chip-cartvip', STATUS.cartvip, STATUS.cartvip ? 'CartVIP' : 'CartVIP not set');
+<<<<<<< HEAD
   chip('chip-aloware', STATUS.aloware, STATUS.aloware ? 'Aloware' : 'Aloware not set');
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   if (STATUS.recentFailures) { $('chip-telnyx').classList.add('bad'); $('chip-telnyx').title = STATUS.recentFailures + ' recent automation failures — see Settings'; }
 }
 
@@ -117,7 +120,11 @@ var LOADERS = {
   callcenter: function () { return loadPeriod(); },
   sales: function () { return loadPeriod(); },
   calls: function () { return loadCalls(); },
+<<<<<<< HEAD
   billing: function () { return loadVenueInvoices(); },
+=======
+  billing: function () { return loadUsageInvoices(); },
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   expenses: function () { return loadExpenses(); },
   clients: function () { return loadClients(); },
   settings: function () { return loadSettingsPage(); },
@@ -136,6 +143,10 @@ $('tabs').addEventListener('click', function (e) { var t = e.target.closest('.ta
 function fillClientSelects() {
   var opts = CLIENTS.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>'; }).join('');
   $('ca-client').innerHTML = '<option value="">All clients</option>' + opts;
+<<<<<<< HEAD
+=======
+  $('bi-client').innerHTML = '<option value="">Choose a client</option>' + opts;
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   $('mn-client').innerHTML = opts;
   $('ms-client').innerHTML = '<option value="">Not matched</option>' + opts;
 }
@@ -175,9 +186,12 @@ async function loadOverview() {
     return '<tr><td class="l">' + esc(e.label) + (e.source === 'telnyx' ? ' <span class="pill pill-info">Auto</span>' : '') + '</td><td class="strong">' + money(e.monthAmount) + '</td></tr>';
   }).join('') : '<tr class="empty-row"><td colspan="2">No expenses this month.</td></tr>';
 
+<<<<<<< HEAD
   $('ov-venues').innerHTML = o.salesByVenue.length ? o.salesByVenue.map(function (v) {
     return '<tr><td class="l strong">' + esc(v.name) + (v.matched ? '' : ' <span class="pill pill-warn">Not matched</span>') + '</td><td>' + intf(v.orders) + '</td><td class="strong">' + money(v.sales) + '</td><td>' + money(v.orders ? v.sales / v.orders : 0) + '</td></tr>';
   }).join('') + '<tr><td class="l muted">Total</td><td class="muted">' + intf(o.salesByVenue.reduce(function (a, v) { return a + v.orders; }, 0)) + '</td><td class="strong">' + money(o.salesByVenue.reduce(function (a, v) { return a + v.sales; }, 0)) + '</td><td></td></tr>' : '<tr class="empty-row"><td colspan="4">No sales this month yet.</td></tr>';
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   $('ov-calls-note').textContent = o.calls.days ? 'Telnyx data for ' + o.calls.days + ' day' + (o.calls.days > 1 ? 's' : '') + ' of this month.' : '';
   var rows = o.byClient.filter(function (c) { return c.calls || c.minutes || c.sms; });
   $('ov-clients').innerHTML = rows.length ? rows.map(function (c) {
@@ -205,8 +219,11 @@ function renderCallCenter() {
   var alerts = [];
   if (final) alerts.push('<div class="notice good"><span>Invoice #' + P.invoiceNo + ' was finalized ' + (P.finalizedBy ? 'by ' + esc(P.finalizedBy) + ' ' : '') + 'on ' + fmtDateY((P.finalizedAt || '').slice(0, 10)) + '. Numbers below are locked.</span><button class="btn btn-ghost btn-sm" onclick="reopenPeriod()">Reopen to edit</button></div>');
   if (!final && t.unassignedCount) alerts.push('<div class="notice warn"><span>' + t.unassignedCount + ' sale' + (t.unassignedCount > 1 ? 's' : '') + ' (' + money(t.unassignedSales) + ') have no agent yet. They count toward total sales but nobody gets the bonus.</span><button class="btn btn-ghost btn-sm" data-act="go-unassigned">Assign agents</button></div>');
+<<<<<<< HEAD
   var cov = P.coverage || { below: [] };
   if (cov.below.length) alerts.push('<div class="notice warn"><span>' + cov.below.map(function (b) { return '<b>' + esc(b.name) + '</b> (' + money(b.sales) + ' vs ' + money(b.billedHours) + ')'; }).join(', ') + (cov.below.length > 1 ? ' have' : ' has') + ' sales below ' + cov.minMultiple + '× what their hours are billed at' + (today() <= P.period.to && !final ? ' so far this period' : '') + '.</span></div>');
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   var unmatched = P.locations.filter(function (l) { return !l.matched; });
   if (!final && unmatched.length) alerts.push('<div class="notice info"><span>' + unmatched.length + ' CartVIP location' + (unmatched.length > 1 ? 's' : '') + ' didn\'t match a client: ' + unmatched.map(function (l) { return esc(l.name); }).join(', ') + '. Add the name under Clients → Names in CartVIP.</span></div>');
   $('cc-alerts').innerHTML = alerts.join('');
@@ -220,6 +237,7 @@ function renderCallCenter() {
   $('cc-agents').innerHTML = P.agents.map(function (a) {
     var hours = final ? intf(a.hours) : '<input class="cell-input" data-key="h-' + a.agentId + '" data-chg="hours" data-id="' + a.agentId + '" value="' + (a.hours || '') + '" inputmode="decimal" placeholder="0"/>';
     var extra = final ? money(a.extra) : '<input class="cell-input" data-key="x-' + a.agentId + '" data-chg="extra" data-id="' + a.agentId + '" value="' + (a.extra || '') + '" inputmode="decimal" placeholder="0"/>';
+<<<<<<< HEAD
     return '<tr><td class="l strong">' + esc(a.name) + (a.role === 'manager' ? ' <span class="pill pill-ink">Manager</span>' : '') + '</td><td>' + hours + '</td><td>' + money(a.rate) + '</td><td>' + money(a.hoursPay) + '</td><td>' + money(a.sales) + '</td><td>' + coverageCell(a) + '</td><td>' + money(a.bonus) + ' <span class="muted small">' + a.bonusPct + '%</span></td><td>' + extra + '</td><td class="strong">' + money(a.total) + '</td></tr>';
   }).join('');
   var sum = function (k) { return P.agents.reduce(function (s, a) { return s + a[k]; }, 0); };
@@ -243,6 +261,25 @@ function renderCallCenter() {
     return '<tr' + (r.minutes || r.activities ? '' : ' class="muted"') + '><td class="l strong">' + esc(r.name) + '</td><td class="l small">' + venue + '</td><td>' + cell(r, 'minutes', r.autoMinutes, r.minutesOverridden) + '</td><td' + (byAct ? ' class="muted"' : '') + '>' + pct(r.shareTime) + '</td><td>' + cell(r, 'activities', r.autoActivities, r.activitiesOverridden) + '</td><td' + (byAct ? '' : ' class="muted"') + '>' + pct(r.shareActivities) + '</td><td class="strong">' + money(r.amount) + '</td></tr>';
   }).join('') : '<tr class="empty-row"><td colspan="7">No Aloware lines yet. Add them under Settings → Aloware lines.</td></tr>';
   $('cc-rebill-foot').innerHTML = '<tr><td class="l">Total</td><td></td><td>' + intf(rb.totalMinutes) + '</td><td>' + (rb.totalMinutes ? '100%' : '—') + '</td><td>' + intf(rb.totalActivities) + '</td><td>' + (rb.totalActivities ? '100%' : '—') + '</td><td>' + money(rb.hasData ? P.subtotal : 0) + '</td></tr>';
+=======
+    return '<tr><td class="l strong">' + esc(a.name) + (a.role === 'manager' ? ' <span class="pill pill-ink">Manager</span>' : '') + '</td><td>' + hours + '</td><td>' + money(a.rate) + '</td><td>' + money(a.hoursPay) + '</td><td>' + money(a.sales) + '</td><td>' + money(a.bonus) + ' <span class="muted small">' + a.bonusPct + '%</span></td><td>' + extra + '</td><td class="strong">' + money(a.total) + '</td></tr>';
+  }).join('');
+  var sum = function (k) { return P.agents.reduce(function (s, a) { return s + a[k]; }, 0); };
+  $('cc-agents-foot').innerHTML = '<tr><td class="l">Total</td><td>' + intf(sum('hours')) + '</td><td></td><td>' + money(sum('hoursPay')) + '</td><td>' + money(t.sales) + '</td><td>' + money(sum('bonus')) + '</td><td>' + money(sum('extra')) + '</td><td>' + money(t.payroll) + '</td></tr>';
+
+  var rb = P.rebill;
+  var showAll = !final && (REBILL_ALL || rb.totalMinutes > 0);
+  var rebillClients = !showAll ? rb.rows : CLIENTS.map(function (c) {
+    return rb.rows.find(function (r) { return r.clientId === c.id; }) || { clientId: c.id, name: c.name, autoMinutes: 0, minutes: 0, share: 0, amount: 0 };
+  });
+  if (!final && !showAll) {
+    $('cc-rebill').innerHTML = '<tr class="empty-row"><td colspan="5">No Telnyx call minutes for this period yet — they fill in every night. <button class="btn btn-ghost btn-sm" style="margin-left:.5rem" onclick="REBILL_ALL=true;renderCallCenter()">Enter minutes by hand</button></td></tr>';
+  } else $('cc-rebill').innerHTML = rebillClients.length ? rebillClients.map(function (r) {
+    var used = final ? intf(r.minutes) : '<input class="cell-input" data-key="r-' + r.clientId + '" data-chg="rebill" data-id="' + r.clientId + '" value="' + (r.overridden ? r.minutes : '') + '" placeholder="' + r.autoMinutes + '" inputmode="decimal"/>';
+    return '<tr' + (r.minutes ? '' : ' class="muted"') + '><td class="l strong">' + esc(r.name) + '</td><td>' + intf(r.autoMinutes) + '</td><td>' + used + '</td><td>' + pct(r.share) + '</td><td class="strong">' + money(r.amount) + '</td></tr>';
+  }).join('') : '<tr class="empty-row"><td colspan="5">No call minutes in this period.</td></tr>';
+  $('cc-rebill-foot').innerHTML = '<tr><td class="l">Total</td><td></td><td>' + intf(rb.totalMinutes) + '</td><td>' + (rb.totalMinutes ? '100%' : '—') + '</td><td>' + money(rb.totalMinutes ? P.subtotal : 0) + '</td></tr>';
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 
   var nextNo = P.invoiceNo || SETTINGS.nextInvoiceNumber;
   $('cc-doc-actions').innerHTML = final
@@ -251,6 +288,7 @@ function renderCallCenter() {
   $('cc-doc').innerHTML = periodDoc(P);
   refreshUnassignedBadge();
 }
+<<<<<<< HEAD
 function coverageCell(a) {
   if (a.coverage == null) return '<span class="muted">—</span>';
   var v = (Math.round(a.coverage * 100) / 100).toFixed(2) + '×';
@@ -259,6 +297,8 @@ function coverageCell(a) {
 async function setRebillBasis(v) {
   await run(null, async function () { SETTINGS = await api('PATCH', '/settings', { rebillBasis: v }); await loadPeriod(); });
 }
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 function stat(k, v, sub) { return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (sub ? '<div class="muted small">' + sub + '</div>' : '') + '</div>'; }
 function refreshUnassignedBadge() {
   var n = PERIOD && !isFinal() ? PERIOD.totals.unassignedCount : 0;
@@ -274,9 +314,13 @@ async function patchPeriod(body) {
 }
 CHANGES['hours'] = function (id, el) { var b = { hours: {} }; b.hours[id] = el.value === '' ? '' : num(el.value); patchPeriod(b).catch(function (e) { toast(e.message, true); }); };
 CHANGES['extra'] = function (id, el) { var b = { extraBonus: {} }; b.extraBonus[id] = el.value === '' ? '' : num(el.value); patchPeriod(b).catch(function (e) { toast(e.message, true); }); };
+<<<<<<< HEAD
 ['minutes', 'activities'].forEach(function (f) {
   CHANGES['rebill-' + f] = function (id, el) { var b = { rebillOverrides: {} }; b.rebillOverrides[id] = {}; b.rebillOverrides[id][f] = el.value === '' ? '' : num(el.value); patchPeriod(b).catch(function (e) { toast(e.message, true); }); };
 });
+=======
+CHANGES['rebill'] = function (id, el) { var b = { rebillOverrides: {} }; b.rebillOverrides[id] = el.value === '' ? '' : num(el.value); patchPeriod(b).catch(function (e) { toast(e.message, true); }); };
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 
 async function copyHours() {
   var i = PERIODS.findIndex(function (p) { return p.id === PERIOD_ID; });
@@ -331,8 +375,12 @@ function periodDoc(P) {
       saleRows.push('<tr><td class="l">' + esc(x.confirmation || '—') + '</td><td class="l">' + usDate(x.soldOn) + '</td><td class="l">' + esc(c.name) + '</td><td class="l">' + esc(x.customer) + '</td><td class="l">' + esc(x.clientName || x.destination) + '</td><td>' + money(c.amount) + '</td></tr>');
     });
   });
+<<<<<<< HEAD
   var rbRows = P.rebill.rows.filter(function (r) { return r.minutes || r.activities; });
   var rb = P.rebill.hasData ? rbRows.map(function (r) { return '<tr><td class="l">' + esc(r.name) + '</td><td>' + intf(r.minutes) + '</td><td>' + pct(r.shareTime) + '</td><td>' + money(r.amountTime) + '</td><td>' + intf(r.activities) + '</td><td>' + pct(r.shareActivities) + '</td><td>' + money(r.amountActivities) + '</td></tr>'; }).join('') : '';
+=======
+  var rb = P.rebill.rows.map(function (r) { return '<tr><td class="l">' + esc(r.name) + '</td><td>' + intf(r.minutes) + '</td><td>' + pct(r.share) + '</td><td>' + money(r.amount) + '</td></tr>'; }).join('');
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   var mgr = P.agents.filter(function (a) { return a.role === 'manager'; }), ag = P.agents.filter(function (a) { return a.role !== 'manager'; });
   var agRow = function (a) { return '<tr><td class="l">' + esc(a.name.toUpperCase()) + '</td><td>' + intf(a.hours) + '</td><td>' + money(a.rate) + '</td><td>' + money(a.hoursPay) + '</td><td>' + money(a.sales) + '</td><td>' + money(a.bonus + a.extra) + '</td><td>' + money(a.total) + '</td></tr>'; };
   var ovr = P.lines.find(function (l) { return l.key === 'ovr'; }) || { amount: 0 }, sovr = P.lines.find(function (l) { return l.key === 'salesovr'; }) || { amount: 0 };
@@ -347,7 +395,11 @@ function periodDoc(P) {
     '<div class="p-terms"><strong>Terms &amp; instructions</strong>' + esc(s.paymentTerms) + '</div>' +
     '<h4>LOCATION SALES</h4><table><thead><tr><th class="l">LOCATION</th><th>ORDERS</th><th>SALES</th></tr></thead><tbody>' + (locs || '<tr><td class="l muted" colspan="3">No sales in this period.</td></tr>') + '</tbody><tfoot><tr><td class="l"></td><td>' + P.totals.orders + '</td><td>' + money(P.totals.sales) + '</td></tr></tfoot></table>' +
     '<h4>SALES INCLUDED ON THIS INVOICE</h4><table><thead><tr><th class="l">ORDER NO</th><th class="l">DATE</th><th class="l">AGENT</th><th class="l">GUEST</th><th class="l">CLIENT</th><th>TOTAL</th></tr></thead><tbody>' + (saleRows.join('') || '<tr><td class="l muted" colspan="6">No sales in this period.</td></tr>') + '</tbody><tfoot><tr><td class="l">' + saleRows.length + '</td><td colspan="4"></td><td>' + money(P.totals.sales) + '</td></tr></tfoot></table>' +
+<<<<<<< HEAD
     (rb ? '<h4>CLIENT (ALOWARE ' + esc(P.period.invoiceRange) + ')</h4><div class="tbl-scroll"><table><thead><tr><th class="l">CLIENT</th><th>CALL MIN</th><th>% OF TIME</th><th>REBILL BY TIME</th><th>ACTIVITIES</th><th>% OF ACT.</th><th>REBILL BY ACT.</th></tr></thead><tbody>' + rb + '</tbody><tfoot><tr><td class="l">TOTALS</td><td>' + intf(P.rebill.totalMinutes) + '</td><td>100%</td><td>' + money(P.subtotal) + '</td><td>' + intf(P.rebill.totalActivities) + '</td><td>100%</td><td>' + money(P.subtotal) + '</td></tr></tfoot></table></div><div class="p-note">Venues are billed by ' + (P.rebill.basis === 'activities' ? 'activities' : 'call time') + '.</div>' : '') +
+=======
+    (rb ? '<h4>CLIENT REBILL BY CALL TIME</h4><table><thead><tr><th class="l">CLIENT</th><th>MINUTES</th><th>% OF TIME</th><th>REBILL BY TIME</th></tr></thead><tbody>' + rb + '</tbody><tfoot><tr><td class="l">TOTALS</td><td>' + intf(P.rebill.totalMinutes) + '</td><td>100%</td><td>' + money(P.subtotal) + '</td></tr></tfoot></table><div class="p-note">Call minutes from Telnyx for ' + esc(P.period.label) + '.</div>' : '') +
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     '<h4>AGENTS ' + esc(P.period.invoiceRange) + '</h4><table><thead><tr><th class="l"></th><th>HOURS</th><th>PAY/HOUR</th><th>HOURS TOTAL</th><th>SALES</th><th>BONUS</th><th>GRAND TOTAL</th></tr></thead><tbody>' +
     (mgr.length ? '<tr><td class="l strong" colspan="7">MANAGERS</td></tr>' + mgr.map(agRow).join('') : '') +
     (ag.length ? '<tr><td class="l strong" colspan="7">AGENTS</td></tr>' + ag.map(agRow).join('') : '') +
@@ -368,8 +420,12 @@ function downloadPeriodCsv() {
   P.sales.forEach(function (x) { (x.credits.length ? x.credits : [{ name: '', amount: x.total }]).forEach(function (c) { add([x.confirmation, x.soldOn, c.name, x.customer, x.clientName || x.destination, c.amount, x.excluded ? 'yes' : '']); }); }); add([]);
   add(['AGENT', 'ROLE', 'HOURS', 'PAY/HOUR', 'HOURS TOTAL', 'SALES', 'BONUS', 'EXTRA', 'GRAND TOTAL']);
   P.agents.forEach(function (a) { add([a.name, a.role, a.hours, a.rate, a.hoursPay, a.sales, a.bonus, a.extra, a.total]); }); add([]);
+<<<<<<< HEAD
   add(['ALOWARE LINE', 'VENUE', 'CALL MINUTES', '% OF TIME', 'REBILL BY TIME', 'ACTIVITIES', '% OF ACTIVITIES', 'REBILL BY ACTIVITIES']);
   P.rebill.rows.forEach(function (r) { add([r.name, r.clientNames.join(' + '), r.minutes, (r.shareTime * 100).toFixed(2) + '%', r.amountTime, r.activities, (r.shareActivities * 100).toFixed(2) + '%', r.amountActivities]); });
+=======
+  add(['CLIENT', 'MINUTES', '% OF TIME', 'REBILL']); P.rebill.rows.forEach(function (r) { add([r.name, r.minutes, (r.share * 100).toFixed(2) + '%', r.amount]); });
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   var blob = new Blob([rows.join('\n')], { type: 'text/csv' });
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'Invoice' + (P.invoiceNo || '-draft') + ' - ' + P.period.from + ' to ' + P.period.to + '.csv'; a.click();
@@ -387,16 +443,22 @@ function agentOptions(selected, blankLabel) {
 function renderSales() {
   if (!PERIOD) return;
   var final = isFinal();
+<<<<<<< HEAD
   var vsel = $('sl-venue'), vcur = vsel.value;
   vsel.innerHTML = '<option value="">All venues</option>' + PERIOD.locations.map(function (l) { return '<option value="' + esc(l.key) + '">' + esc(l.name) + ' (' + l.orders + ')</option>'; }).join('');
   vsel.value = PERIOD.locations.some(function (l) { return l.key === vcur; }) ? vcur : '';
   var venue = vsel.value;
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   var q = ($('sl-search').value || '').toLowerCase(), f = $('sl-filter').value;
   var list = PERIOD.sales.filter(function (s) {
     if (f === 'unassigned' && (s.excluded || s.credits.length)) return false;
     if (f === 'unmatched' && (s.excluded || s.clientId)) return false;
     if (f === 'excluded' && !s.excluded) return false;
+<<<<<<< HEAD
     if (venue && (s.clientId || ('raw:' + (s.destination || 'Unknown'))) !== venue) return false;
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     if (q && (s.customer + ' ' + s.confirmation + ' ' + s.destination + ' ' + s.clientName + ' ' + s.package).toLowerCase().indexOf(q) < 0) return false;
     return true;
   });
@@ -499,6 +561,7 @@ async function saveManual() {
   });
 }
 
+<<<<<<< HEAD
 /* ── venue invoices ────────────────────────────────────────────────────── */
 var VENUE = null, SAVED_INVOICES = [];
 function brand(k) { var b = (SETTINGS.brands || {}); return k === 'ai' ? (b.ai || 'AI Receptionist') : (b.callCenter || 'ClubLifter'); }
@@ -588,6 +651,43 @@ ACTIONS['view-saved-inv'] = function (id) {
   var i = SAVED_INVOICES.find(function (x) { return x.id === id; });
   showVenueDoc(i.kind === 'callcenter' ? ccDoc(i) : aiDoc(i), null);
 };
+=======
+/* ── receptionist billing ────────────────────────────────────────────────── */
+var USAGE_INVOICES = [];
+async function loadUsageInvoices() {
+  USAGE_INVOICES = (await api('GET', '/invoices')).sort(function (a, b) { return (b.month + a.clientName).localeCompare(a.month + b.clientName); });
+  $('bi-body').innerHTML = USAGE_INVOICES.length ? USAGE_INVOICES.map(function (i) {
+    return '<tr><td class="l muted small">' + esc(i.id) + '</td><td class="l strong">' + esc(i.clientName) + '</td><td class="l">' + monthName(i.month) + '</td><td>' + intf(i.totalCalls) + '</td><td>' + intf(i.totalMinutes) + '</td><td>' + intf(i.totalSms) + '</td><td class="strong">' + money(i.total) + '</td><td class="actions"><button class="btn btn-ghost btn-sm" ' + act('view-usage-inv', i.id) + '>View</button></td></tr>';
+  }).join('') : '<tr class="empty-row"><td colspan="8">No saved invoices yet. Preview one above and save it.</td></tr>';
+}
+ACTIONS['view-usage-inv'] = function (id) { renderUsageDoc(USAGE_INVOICES.find(function (i) { return i.id === id; }), false); };
+async function previewUsageInvoice() {
+  var c = $('bi-client').value; if (!c) return toast('Choose a client first.', true);
+  await run(null, async function () { renderUsageDoc(await api('GET', '/invoices/preview?clientId=' + encodeURIComponent(c) + '&month=' + $('bi-month').value), true); });
+}
+function renderUsageDoc(inv, preview) {
+  var co = inv.company || SETTINGS.company || {};
+  $('bi-doc').innerHTML = '<article class="paper">' +
+    '<div class="p-head"><div class="p-from"><strong>' + esc(co.name) + '</strong>' + esc(co.address) + '<br>' + esc(co.email) + '<br>' + esc(co.phone) + '</div><div class="p-title">INVOICE</div></div>' +
+    '<div class="p-meta"><div><div class="lbl">BILL TO</div><div class="strong">' + esc(inv.clientName) + '</div></div><dl><dt>Invoice</dt><dd>' + (inv.id ? esc(inv.id) : 'Preview') + '</dd><dt>Period</dt><dd>' + monthName(inv.month) + '</dd></dl></div>' +
+    '<table><thead><tr><th class="l">DESCRIPTION</th><th>QUANTITY</th><th>RATE</th><th>TOTAL</th></tr></thead><tbody>' +
+    '<tr><td class="l">AI receptionist — voice minutes (' + intf(inv.totalCalls || 0) + ' calls)</td><td>' + intf(inv.totalMinutes) + '</td><td>$' + Number(inv.rateMin).toFixed(3) + '</td><td>' + money(inv.costMinutes) + '</td></tr>' +
+    '<tr><td class="l">Text messages</td><td>' + intf(inv.totalSms) + '</td><td>$' + Number(inv.rateSms).toFixed(3) + '</td><td>' + money(inv.costSms) + '</td></tr>' +
+    '</tbody></table><div class="p-total"><dl><div class="due" style="display:contents"><dt>Balance due</dt><dd>' + money(inv.total) + '</dd></div></dl></div>' +
+    '<div class="p-terms"><strong>Terms &amp; instructions</strong>' + esc(inv.paymentTerms || SETTINGS.paymentTerms) + '</div></article>' +
+    '<div class="doc-actions no-print">' + (preview ? '<button class="btn btn-red" ' + act('save-usage-inv', inv.clientId + '|' + inv.month) + '>Save this invoice</button>' : '') + '<button class="btn btn-ghost" onclick="printDoc(\'billing\')">Print or save PDF</button></div>';
+  $('bi-doc').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+ACTIONS['save-usage-inv'] = async function (key) {
+  var p = key.split('|');
+  await run(null, async function () { var inv = await api('POST', '/invoices/generate', { clientId: p[0], month: p[1] }); toast('Saved ' + inv.id); renderUsageDoc(inv, false); loadUsageInvoices(); });
+};
+async function generateAllUsage() {
+  var m = $('bi-month').value;
+  if (!confirm('Save receptionist invoices for every client for ' + monthName(m) + '?')) return;
+  await run(null, async function () { var r = await api('POST', '/invoices/generate-all', { month: m }); toast(r.length + ' invoices saved'); loadUsageInvoices(); });
+}
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 
 /* ── expenses ────────────────────────────────────────────────────────────── */
 var EXPENSES = [];
@@ -689,7 +789,10 @@ function openClientModal(c) {
   $('mc-title').textContent = c ? 'Edit client' : 'Add client';
   $('mc-id').value = c ? c.id : ''; $('mc-name').value = c ? c.name : ''; $('mc-business').value = c ? (c.business || '') : '';
   $('mc-aliases').value = c ? (c.aliases || []).join(', ') : '';
+<<<<<<< HEAD
   $('mc-billing').value = c ? (c.billingContact || '') : '';
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   $('mc-ratemin').value = c ? c.rateMin : SETTINGS.defaultRateMin; $('mc-ratesms').value = c ? c.rateSms : SETTINGS.defaultRateSms;
   $('mc-notes').value = c ? (c.notes || '') : ''; $('mc-numbers').innerHTML = '';
   ((c && c.numbers && c.numbers.length) ? c.numbers : ['']).forEach(function (n) { addListRow('mc-numbers', '+1702…', n); });
@@ -702,7 +805,11 @@ ACTIONS['client-del'] = async function (id) {
 };
 async function saveClient() {
   var id = $('mc-id').value;
+<<<<<<< HEAD
   var body = { name: $('mc-name').value.trim(), business: $('mc-business').value.trim(), aliases: $('mc-aliases').value, billingContact: $('mc-billing').value.trim(), notes: $('mc-notes').value.trim(), rateMin: num($('mc-ratemin').value), rateSms: num($('mc-ratesms').value), numbers: [].slice.call(document.querySelectorAll('#mc-numbers input')).map(function (i) { return i.value.trim(); }).filter(Boolean) };
+=======
+  var body = { name: $('mc-name').value.trim(), business: $('mc-business').value.trim(), aliases: $('mc-aliases').value, notes: $('mc-notes').value.trim(), rateMin: num($('mc-ratemin').value), rateSms: num($('mc-ratesms').value), numbers: [].slice.call(document.querySelectorAll('#mc-numbers input')).map(function (i) { return i.value.trim(); }).filter(Boolean) };
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   if (!body.name) return toast('Add the client name.', true);
   await run(null, async function () {
     if (id) await api('PATCH', '/clients/' + encodeURIComponent(id), body); else await api('POST', '/clients', body);
@@ -721,9 +828,12 @@ async function loadSettingsPage() {
   $('st-r-mgr').value = rt.managerHourly; $('st-r-agent').value = rt.agentHourly; $('st-r-abonus').value = rt.agentBonusPct; $('st-r-mbonus').value = rt.managerBonusPct;
   $('st-r-ovr').value = rt.overrideHourly; $('st-r-sovr').value = rt.salesOverridePct; $('st-cycle').value = s.cycle || 'semimonthly';
   $('st-rmin').value = s.defaultRateMin; $('st-rsms').value = s.defaultRateSms;
+<<<<<<< HEAD
   $('st-r-minmult').value = rt.minSalesMultiple != null ? rt.minSalesMultiple : 1; $('st-basis').value = s.rebillBasis || 'time';
   $('st-brand-ai').value = (s.brands || {}).ai || ''; $('st-brand-cc').value = (s.brands || {}).callCenter || '';
   loadLines();
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   $('st-annot').checked = s.annotationsEnabled !== false;
   renderAgents();
   $('st-telnyx').innerHTML = STATUS.telnyx ? '<span class="pill pill-good">Key set</span> ' + (STATUS.lastCollected ? 'Calls pulled through ' + fmtDateY(STATUS.lastCollected) + '.' : 'No calls pulled yet.') : '<span class="pill pill-warn">Not connected</span> Add TELNYX_API_KEY in Railway, then redeploy.';
@@ -742,8 +852,12 @@ async function saveSettings() {
     company: { name: $('st-co-name').value, address: $('st-co-address').value, email: $('st-co-email').value, phone: $('st-co-phone').value },
     billTo: { name: $('st-bt-name').value, contact: $('st-bt-contact').value },
     paymentTerms: $('st-terms').value, nextInvoiceNumber: num($('st-next-inv').value),
+<<<<<<< HEAD
     rates: { managerHourly: num($('st-r-mgr').value), agentHourly: num($('st-r-agent').value), agentBonusPct: num($('st-r-abonus').value), managerBonusPct: num($('st-r-mbonus').value), overrideHourly: num($('st-r-ovr').value), salesOverridePct: num($('st-r-sovr').value), minSalesMultiple: num($('st-r-minmult').value) },
     rebillBasis: $('st-basis').value, brands: { ai: $('st-brand-ai').value.trim() || 'AI Receptionist', callCenter: $('st-brand-cc').value.trim() || 'ClubLifter' },
+=======
+    rates: { managerHourly: num($('st-r-mgr').value), agentHourly: num($('st-r-agent').value), agentBonusPct: num($('st-r-abonus').value), managerBonusPct: num($('st-r-mbonus').value), overrideHourly: num($('st-r-ovr').value), salesOverridePct: num($('st-r-sovr').value) },
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     cycle: $('st-cycle').value, defaultRateMin: num($('st-rmin').value), defaultRateSms: num($('st-rsms').value),
   };
   var cycleChanged = body.cycle !== SETTINGS.cycle;
@@ -779,6 +893,7 @@ async function loadJobs() {
     return '<li><span class="muted">' + new Date(j.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '</span><span><b class="' + (j.ok ? 'ok' : 'bad') + '">' + (j.ok ? '✓' : '✕') + '</b> ' + esc(j.job) + (j.detail ? ' — <span class="muted">' + esc(j.detail) + '</span>' : '') + '</span></li>';
   }).join('') : '<li><span></span><span class="muted">Nothing has run yet. The first automatic run is tonight at 11:59 PM Pacific.</span></li>';
 }
+<<<<<<< HEAD
 var LINES = [];
 async function loadLines() {
   var r = await Promise.all([api('GET', '/aloware/lines'), api('GET', '/aloware/status')]);
@@ -814,6 +929,8 @@ async function deleteLine() {
   if (!confirm('Delete this line? Its calls stop counting in the rebill until a line with the same Aloware ID or number exists again.')) return;
   await run(null, async function () { await api('DELETE', '/aloware/lines/' + encodeURIComponent($('ml-id').value)); closeModal('m-line'); loadLines(); });
 }
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 function showInfo(title, html) { $('mi-title').textContent = title; $('mi-body').innerHTML = html; openModal('m-info'); }
 async function testTelnyx() {
   await run(event && event.target, async function () {

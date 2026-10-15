@@ -9,7 +9,10 @@ const T = require('./lib/time');
 const calc = require('./lib/calc');
 const telnyx = require('./lib/telnyx');
 const cartvip = require('./lib/cartvip');
+<<<<<<< HEAD
 const aloware = require('./lib/aloware');
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 const { runSeedsAndMigrations } = require('./lib/seed');
 
 runSeedsAndMigrations();
@@ -18,6 +21,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
+<<<<<<< HEAD
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -65,12 +69,52 @@ api.post('/logout', (req, res) => {
 });
 api.get('/me', (req, res) => res.json(req.user));
 
+=======
+app.use(express.static(path.join(__dirname, 'public')));
+
+const api = express.Router();
+const wrap = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
+  console.warn('[api]', req.method, req.path, e.message);
+  res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.message });
+});
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+api.post('/login', (req, res) => {
+  const { username, password } = req.body || {};
+  const user = store.read('users', []).find(u => u.username === String(username || '').trim().toLowerCase() && u.password === password);
+  if (!user) return res.status(401).json({ error: 'Wrong username or password.' });
+  const token = crypto.randomBytes(24).toString('hex');
+  const sessions = store.read('sessions', {});
+  sessions[token] = { username: user.username, name: user.name, role: user.role, createdAt: new Date().toISOString() };
+  store.write('sessions', sessions);
+  res.json({ token, user: sessions[token] });
+});
+api.get('/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+api.use((req, res, next) => {
+  const token = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const session = token && store.read('sessions', {})[token];
+  if (!session) return res.status(401).json({ error: 'Session expired — sign in again.' });
+  req.user = session; req.token = token; next();
+});
+
+api.post('/logout', (req, res) => {
+  const sessions = store.read('sessions', {}); delete sessions[req.token]; store.write('sessions', sessions);
+  res.json({ ok: true });
+});
+api.get('/me', (req, res) => res.json(req.user));
+
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 // ── Status / integrations ─────────────────────────────────────────────────────
 api.get('/status', (req, res) => {
   const daily = store.read('daily', []);
   const jobs = store.read('jobs', []);
   res.json({
+<<<<<<< HEAD
     telnyx: telnyx.configured(), cartvip: cartvip.configured(), aloware: aloware.configured(),
+=======
+    telnyx: telnyx.configured(), cartvip: cartvip.configured(),
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     today: T.pacificDateStr(), lastCollected: daily.length ? daily[daily.length - 1].date : null,
     lastJob: jobs[0] || null, recentFailures: jobs.slice(0, 20).filter(j => !j.ok).length,
     annotationsEnabled: store.read('settings', {}).annotationsEnabled !== false,
@@ -89,11 +133,18 @@ api.get('/settings', (req, res) => res.json(store.read('settings', {})));
 api.patch('/settings', (req, res) => {
   const s = store.read('settings', {});
   const b = req.body || {};
+<<<<<<< HEAD
   ['company', 'billTo', 'rates', 'brands'].forEach(k => { if (b[k]) s[k] = Object.assign({}, s[k], b[k]); });
   ['paymentTerms', 'rebillBasis', 'cycle', 'nextInvoiceNumber', 'annotationsEnabled', 'defaultRateMin', 'defaultRateSms'].forEach(k => { if (b[k] !== undefined) s[k] = b[k]; });
   if (s.rates) Object.keys(s.rates).forEach(k => { s.rates[k] = Number(s.rates[k]) || 0; });
   s.cycle = s.cycle === 'monthly' ? 'monthly' : 'semimonthly';
   s.rebillBasis = s.rebillBasis === 'activities' ? 'activities' : 'time';
+=======
+  ['company', 'billTo', 'rates'].forEach(k => { if (b[k]) s[k] = Object.assign({}, s[k], b[k]); });
+  ['paymentTerms', 'cycle', 'nextInvoiceNumber', 'annotationsEnabled', 'defaultRateMin', 'defaultRateSms'].forEach(k => { if (b[k] !== undefined) s[k] = b[k]; });
+  if (s.rates) Object.keys(s.rates).forEach(k => { s.rates[k] = Number(s.rates[k]) || 0; });
+  s.cycle = s.cycle === 'monthly' ? 'monthly' : 'semimonthly';
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   s.nextInvoiceNumber = Number(s.nextInvoiceNumber) || 1;
   s.defaultRateMin = Number(s.defaultRateMin) || 0;
   s.defaultRateSms = Number(s.defaultRateSms) || 0;
@@ -111,7 +162,11 @@ api.post('/clients', (req, res) => {
   const client = {
     id: store.uid('c'), name: b.name, business: b.business || '', numbers: cleanList(b.numbers), aliases: cleanList(b.aliases),
     rateMin: b.rateMin != null ? Number(b.rateMin) : s.defaultRateMin, rateSms: b.rateSms != null ? Number(b.rateSms) : s.defaultRateSms,
+<<<<<<< HEAD
     notes: b.notes || '', billingContact: b.billingContact || '', createdAt: new Date().toISOString(),
+=======
+    notes: b.notes || '', createdAt: new Date().toISOString(),
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   };
   const clients = store.read('clients', []); clients.push(client); store.write('clients', clients);
   cartvip.rematchAll();
@@ -129,7 +184,10 @@ api.patch('/clients/:id', (req, res) => {
   if (b.rateMin != null) c.rateMin = Number(b.rateMin);
   if (b.rateSms != null) c.rateSms = Number(b.rateSms);
   if (b.notes != null) c.notes = b.notes;
+<<<<<<< HEAD
   if (b.billingContact != null) c.billingContact = b.billingContact;
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   store.write('clients', clients);
   cartvip.rematchAll();
   res.json(c);
@@ -186,7 +244,11 @@ api.get('/invoices/preview', (req, res) => {
 function saveUsageInvoice(clientId, month) {
   const inv = calc.buildUsageInvoice(clientId, month);
   if (!inv) return null;
+<<<<<<< HEAD
   inv.id = 'INV-' + month + '-' + clientId; inv.kind = 'ai'; inv.generatedAt = new Date().toISOString(); inv.status = 'generated';
+=======
+  inv.id = 'INV-' + month + '-' + clientId; inv.generatedAt = new Date().toISOString(); inv.status = 'generated';
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   const all = store.read('invoices', []).filter(i => i.id !== inv.id); all.push(inv); store.write('invoices', all);
   return inv;
 }
@@ -334,11 +396,16 @@ api.patch('/periods/:id', (req, res) => {
   const doc = calc.getPeriodDoc(req.params.id);
   if (doc.status === 'final') return res.status(400).json({ error: 'This invoice is finalized. Reopen it to make changes.' });
   const b = req.body || {};
+<<<<<<< HEAD
   ['hours', 'extraBonus'].forEach(k => {
+=======
+  ['hours', 'extraBonus', 'rebillOverrides'].forEach(k => {
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
     if (!b[k]) return;
     doc[k] = Object.assign({}, doc[k] || {}, b[k]);
     Object.keys(doc[k]).forEach(id => { if (doc[k][id] === '' || doc[k][id] == null) delete doc[k][id]; else doc[k][id] = Number(doc[k][id]) || 0; });
   });
+<<<<<<< HEAD
   // Rebill overrides per Aloware line: { lineId: { minutes, activities } } — '' clears a field.
   if (b.rebillOverrides) {
     const ov = {};
@@ -350,6 +417,8 @@ api.patch('/periods/:id', (req, res) => {
     });
     doc.rebillOverrides = ov;
   }
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
   calc.savePeriodDoc(doc);
   res.json(calc.computePeriod(req.params.id));
 });
@@ -381,6 +450,7 @@ api.post('/periods/:id/reopen', (req, res) => {
   res.json(calc.computePeriod(req.params.id));
 });
 
+<<<<<<< HEAD
 // ── Aloware lines (rebill rows) ───────────────────────────────────────────────
 api.get('/aloware/status', (req, res) => res.json(aloware.status()));
 api.get('/aloware/lines', (req, res) => res.json(store.read('alowareLines', [])));
@@ -487,6 +557,59 @@ async function once(name, fn) {
   if (running[name]) return; running[name] = true;
   try { await fn(); } finally { running[name] = false; }
 }
+=======
+// ── Dev-phase annotations (drawings, arrows, comments) ────────────────────────
+api.get('/annotations', (req, res) => {
+  let all = store.read('annotations', []);
+  if (req.query.page) all = all.filter(a => a.page === req.query.page);
+  res.json(all);
+});
+api.post('/annotations', (req, res) => {
+  const b = req.body || {};
+  const a = { id: store.uid('n'), page: b.page || 'overview', kind: b.kind, color: b.color || '#EC2229', data: b.data || {}, text: b.text || '', replies: [], resolved: false, author: req.user.name, createdAt: new Date().toISOString() };
+  const all = store.read('annotations', []); all.push(a); store.write('annotations', all);
+  res.json(a);
+});
+api.patch('/annotations/:id', (req, res) => {
+  const all = store.read('annotations', []);
+  const a = all.find(x => x.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Not found.' });
+  const b = req.body || {};
+  if (b.text != null) a.text = b.text;
+  if (b.resolved != null) a.resolved = !!b.resolved;
+  if (b.data != null) a.data = b.data;
+  if (b.reply) a.replies.push({ text: String(b.reply), author: req.user.name, at: new Date().toISOString() });
+  store.write('annotations', all);
+  res.json(a);
+});
+api.delete('/annotations/:id', (req, res) => {
+  store.write('annotations', store.read('annotations', []).filter(a => a.id !== req.params.id));
+  res.json({ ok: true });
+});
+// Clears drawings on a page (comments stay — they're resolved individually).
+api.delete('/annotations', (req, res) => {
+  if (!req.query.page) return res.status(400).json({ error: 'page is required' });
+  store.write('annotations', store.read('annotations', []).filter(a => a.page !== req.query.page || a.kind === 'comment'));
+  res.json({ ok: true });
+});
+
+// ── Month-end run on demand ───────────────────────────────────────────────────
+api.post('/jobs/month-end', wrap(async (req, res) => {
+  const month = (req.body && req.body.month) || T.monthKey(T.pacificDateStr());
+  res.json(await monthEnd(month, 'manual'));
+}));
+
+api.use((req, res) => res.status(404).json({ error: 'Unknown API route: ' + req.method + ' ' + req.path }));
+app.use('/api', api);
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// ── Scheduled jobs (Pacific time) ─────────────────────────────────────────────
+const running = {};
+async function once(name, fn) {
+  if (running[name]) return; running[name] = true;
+  try { await fn(); } finally { running[name] = false; }
+}
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 async function safe(label, fn) {
   try { const detail = await fn(); store.logJob(label, true, detail); return true; }
   catch (e) { store.logJob(label, false, e.message); return false; }

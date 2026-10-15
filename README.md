@@ -9,8 +9,11 @@ Express + JSON files on a Railway volume + node-cron. No database.
 | `TELNYX_API_KEY` | Telnyx API v2 key (Bearer). Calls, SMS, charges summary. |
 | `CARTVIP_API_KEY` | CartVIP affiliate key (`X-API-KEY`). Dispatch sales. |
 | `TELNYX_CALL_RECORD_TYPES` | Optional. Default `sip-trunking` (LiveKit). Use `sip-trunking,call-control` if any line uses Call Control/TeXML. |
+<<<<<<< HEAD
 | `ALOWARE_WEBHOOK_TOKEN` | Any long random string. Aloware sends it as a Bearer token with every call. |
 | `ALOWARE_UTC_OFFSET_MINUTES` | Optional. Leave unset if Aloware timestamps are UTC (default). |
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 | `DATA_DIR` | Optional. Defaults to `/app/data` when that volume exists. |
 
 The service must stay awake (no "App Sleeping") for the scheduled jobs to run.
@@ -23,6 +26,7 @@ The service must stay awake (no "App Sleeping") for the scheduled jobs to run.
 
 Every run is logged under Settings → Automation log.
 
+<<<<<<< HEAD
 ## Aloware (call-center minutes for the rebill)
 
 Aloware has no API to pull calls or reports, so it pushes them instead:
@@ -34,6 +38,8 @@ Aloware has no API to pull calls or reports, so it pushes them instead:
 
 Each call/SMS is stored once (re-sends update it). Lines appear under Settings → Aloware lines; link each to its venue. Minutes = call duration, activities = every communication, same as the GoBest VIP sheet. Past periods: type the numbers from the Aloware report into the rebill table.
 
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 ## First deploy checklist
 
 1. Set the two keys and redeploy.
@@ -47,6 +53,9 @@ Each call/SMS is stored once (re-sends update it). Lines appear under Settings �
 - Existing data migrates automatically on boot (old expense types, new Telnyx DIDs + CartVIP names on existing clients).
 - API is now under `/api/*` and requires login (Bearer token). Old root routes are gone.
 - Call-center invoice math follows the GoBest VIP sheets: hours × pay, agent bonus 1% of own sales, managers 1% of an equal share of total sales, WSS $0.50/hr override, 8% sales override. All rates are editable in Settings.
+<<<<<<< HEAD
 - Venue invoices: each venue gets an AI receptionist invoice (Telnyx minutes × rate) and a call-center invoice (its Aloware lines' share of the month's call-center invoices; lines linked to two venues split evenly). Names of both are editable in Settings.
 - Agents whose sales are below N × what their hours are billed at (pay + WSS override) are flagged; N is in Settings (default 1).
+=======
+>>>>>>> 46126872ff885bc8fa575cdb28748d3d21276471
 - Feedback toolbar (draw / arrows / boxes / text / comments) can be turned off in Settings.
