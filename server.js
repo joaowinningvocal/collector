@@ -1,458 +1,529 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const cors = require('cors');
 const cron = require('node-cron');
-const https = require('https');
+
+const store = require('./lib/store');
+const T = require('./lib/time');
+const calc = require('./lib/calc');
+const telnyx = require('./lib/telnyx');
+const cartvip = require('./lib/cartvip');
+const aloware = require('./lib/aloware');
+const { runSeedsAndMigrations } = require('./lib/seed');
+
+runSeedsAndMigrations();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = process.env.DATA_DIR ||
-  (fs.existsSync('/app/data') ? '/app/data' : path.join(__dirname, 'data'));
-
-// Twilio credentials — set these in Railway → Variables
-const TWILIO_SID   = process.env.TWILIO_ACCOUNT_SID || '';
-const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN  || '';
-
-// Default rates (dollars)
-const DEFAULT_RATE_MIN = 0.08;
-const DEFAULT_RATE_SMS = 0.01;
-
-// ── Setup ─────────────────────────────────────────────────────────────────────
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-// ── File helpers ──────────────────────────────────────────────────────────────
-const CLIENTS_FILE  = path.join(DATA_DIR, 'clients.json');
-const USAGE_FILE    = path.join(DATA_DIR, 'usage.json');     // daily usage log
-const INVOICES_FILE = path.join(DATA_DIR, 'invoices.json');
-const EXPENSES_FILE = path.join(DATA_DIR, 'expenses.json');
-const USERS_FILE    = path.join(DATA_DIR, 'users.json');
+// ── Aloware webhook (Aloware → Integrations → Webhook Integration, auth "Bearer") ──
+app.post('/hooks/aloware', (req, res) => {
+  const token = aloware.TOKEN();
+  if (!token) return res.status(503).json({ error: 'ALOWARE_WEBHOOK_TOKEN is not set' });
+  const auth = req.get('authorization') || '';
+  const bearer = auth.replace(/^Bearer\s+/i, '');
+  const basicPass = /^Basic /i.test(auth) ? Buffer.from(auth.slice(6), 'base64').toString().split(':').slice(1).join(':') : '';
+  if (bearer !== token && basicPass !== token && req.query.token !== token) return res.status(401).json({ error: 'bad token' });
+  try { res.json(aloware.receive(req.body)); }
+  catch (e) { store.logJob('aloware-webhook', false, e.message); res.status(500).json({ error: e.message }); }
+});
 
-function read(file, fallback) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; } }
-function write(file, data) { fs.writeFileSync(file, JSON.stringify(data, null, 2)); }
+const api = express.Router();
+const wrap = fn => (req, res) => Promise.resolve(fn(req, res)).catch(e => {
+  console.warn('[api]', req.method, req.path, e.message);
+  res.status(e.status && e.status < 500 ? e.status : 500).json({ error: e.message });
+});
 
-if (!fs.existsSync(USERS_FILE)) {
-  write(USERS_FILE, [
-    { username:'jenna', password:'winningvocal2026!', role:'master', name:'Jenna' },
-    { username:'adminjoao', password:'vocal2026!', role:'master', name:'João' },
-  ]);
-}
-if (!fs.existsSync(CLIENTS_FILE)) {
-  const seed = [
-    { name:'Cats Meow Karaoke',           business:'Cats Meow',        numbers:['+15046819283'] },
-    { name:'Hustler Las Vegas - Heather',  business:'Larry Flynt',      numbers:['+17029970961'] },
-    { name:'Kings of Hustler',             business:'Larry Flynt',      numbers:['+17025471904'] },
-    { name:'Deja Vu Showgirls Ypsilanti',  business:'Deja Vu',          numbers:['+17348965038'] },
-    { name:'Kalamazoo',                    business:'Deja Vu',          numbers:['+12697754582'] },
-    { name:'Barely Legal New Orleans',     business:'Barely Legal',     numbers:['+15044746323'] },
-    { name:'Hustler New Orleans',          business:'Larry Flynt',      numbers:['+15045141440'] },
-    { name:'Deja Vu Stockton',             business:'Deja Vu',          numbers:['+19163504781'] },
-    { name:'James - WinningVocal',         business:'Winning Vocal',    numbers:['+18773956676'] },
-    { name:'GoBest',                       business:'GoBest',           numbers:['+17027283109'] },
-    { name:'Lily - Winning Realty',        business:'Winning Realty',   numbers:['+17029049574'] },
-  ].map((c, i) => ({
-    id: 'c_seed' + (i+1),
-    name: c.name, business: c.business, numbers: c.numbers,
-    rateMin: DEFAULT_RATE_MIN, rateSms: DEFAULT_RATE_SMS,
-    notes: '', createdAt: new Date().toISOString()
-  }));
-  write(CLIENTS_FILE, seed);
-}
-if (!fs.existsSync(USAGE_FILE))    write(USAGE_FILE, []);
-if (!fs.existsSync(INVOICES_FILE)) write(INVOICES_FILE, []);
-if (!fs.existsSync(EXPENSES_FILE)) {
-  write(EXPENSES_FILE, [
-    { id:'e_rail', label:'Railway',  amount:5,   type:'recurring', month:null, createdAt:new Date().toISOString() },
-    { id:'e_claude', label:'Claude', amount:100, type:'recurring', month:null, createdAt:new Date().toISOString() },
-  ]);
-}
+// ── Auth ──────────────────────────────────────────────────────────────────────
+api.post('/login', (req, res) => {
+  const { username, password } = req.body || {};
+  const user = store.read('users', []).find(u => u.username === String(username || '').trim().toLowerCase() && u.password === password);
+  if (!user) return res.status(401).json({ error: 'Wrong username or password.' });
+  const token = crypto.randomBytes(24).toString('hex');
+  const sessions = store.read('sessions', {});
+  sessions[token] = { username: user.username, name: user.name, role: user.role, createdAt: new Date().toISOString() };
+  store.write('sessions', sessions);
+  res.json({ token, user: sessions[token] });
+});
+api.get('/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
-// ── Date helpers (Pacific time) ───────────────────────────────────────────────
-function pacificDateStr(d) {
-  d = d || new Date();
-  return new Date(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
-    .toISOString().slice(0, 10); // YYYY-MM-DD
-}
-function monthKey(dateStr) { return dateStr.slice(0, 7); } // YYYY-MM
+api.use((req, res, next) => {
+  const token = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const session = token && store.read('sessions', {})[token];
+  if (!session) return res.status(401).json({ error: 'Session expired — sign in again.' });
+  req.user = session; req.token = token; next();
+});
 
-// ── Twilio API ────────────────────────────────────────────────────────────────
-// Returns a promise resolving to parsed JSON from the Twilio REST API.
-function twilioGet(urlPath) {
-  return new Promise((resolve, reject) => {
-    if (!TWILIO_SID || !TWILIO_TOKEN) return reject(new Error('Twilio credentials not set'));
-    const auth = Buffer.from(TWILIO_SID + ':' + TWILIO_TOKEN).toString('base64');
-    const options = {
-      hostname: 'api.twilio.com',
-      path: urlPath,
-      method: 'GET',
-      headers: { 'Authorization': 'Basic ' + auth }
-    };
-    const req = https.request(options, res => {
-      let body = '';
-      res.on('data', c => body += c);
-      res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch(e) { reject(new Error('Twilio parse error: ' + body.slice(0,200))); }
-      });
-    });
-    req.on('error', reject);
-    req.end();
+api.post('/logout', (req, res) => {
+  const sessions = store.read('sessions', {}); delete sessions[req.token]; store.write('sessions', sessions);
+  res.json({ ok: true });
+});
+api.get('/me', (req, res) => res.json(req.user));
+
+// ── Status / integrations ─────────────────────────────────────────────────────
+api.get('/status', (req, res) => {
+  const daily = store.read('daily', []);
+  const jobs = store.read('jobs', []);
+  res.json({
+    telnyx: telnyx.configured(), cartvip: cartvip.configured(), aloware: aloware.configured(),
+    today: T.pacificDateStr(), lastCollected: daily.length ? daily[daily.length - 1].date : null,
+    lastJob: jobs[0] || null, recentFailures: jobs.slice(0, 20).filter(j => !j.ok).length,
+    annotationsEnabled: store.read('settings', {}).annotationsEnabled !== false,
   });
-}
+});
+api.get('/jobs', (req, res) => res.json(store.read('jobs', []).slice(0, 100)));
+api.post('/integrations/telnyx/test', wrap(async (req, res) => res.json(await telnyx.testConnection())));
+api.get('/integrations/telnyx/probe', wrap(async (req, res) => res.json(await telnyx.probe(req.query.type, req.query.date))));
+api.post('/integrations/cartvip/test', wrap(async (req, res) => res.json(await cartvip.testConnection())));
 
-// Fetch ALL pages of a Twilio list resource, following next_page_uri.
-async function twilioGetAll(firstPath, listKey) {
-  let items = [];
-  let pagePath = firstPath;
-  let guard = 0;
-  while (pagePath && guard < 50) {
-    guard++;
-    const data = await twilioGet(pagePath);
-    if (data && Array.isArray(data[listKey])) items = items.concat(data[listKey]);
-    // Twilio returns next_page_uri as a path (or null)
-    pagePath = data && data.next_page_uri ? data.next_page_uri : null;
-  }
-  return items;
-}
+// ── Overview ──────────────────────────────────────────────────────────────────
+api.get('/overview', (req, res) => res.json(calc.monthOverview(req.query.month || T.monthKey(T.pacificDateStr()))));
 
-// Fetch usage for a single number on a given date (Pacific day).
-// Returns { minutes, sms }.
-async function fetchNumberUsage(number, dateStr) {
-  let minutes = 0, sms = 0;
-
-  try {
-    // Messages sent FROM this number on this date (paginated)
-    let msgPath = '/2010-04-01/Accounts/' + TWILIO_SID + '/Messages.json'
-      + '?From=' + encodeURIComponent(number)
-      + '&DateSent=' + dateStr + '&PageSize=1000';
-    const messages = await twilioGetAll(msgPath, 'messages');
-    sms = messages.length;
-  } catch(e) { console.warn('[Twilio] SMS fetch failed for', number, e.message); }
-
-  try {
-    // Calls FROM this number on this date (paginated)
-    let callPath = '/2010-04-01/Accounts/' + TWILIO_SID + '/Calls.json'
-      + '?From=' + encodeURIComponent(number)
-      + '&StartTime=' + dateStr + '&PageSize=1000';
-    const calls = await twilioGetAll(callPath, 'calls');
-    let totalSec = calls.reduce((a, c) => a + (parseInt(c.duration) || 0), 0);
-    minutes = Math.ceil(totalSec / 60);
-  } catch(e) { console.warn('[Twilio] Calls fetch failed for', number, e.message); }
-
-  return { minutes, sms };
-}
-
-// Collect usage for all client numbers for a given date, store in usage log.
-async function collectUsage(dateStr) {
-  dateStr = dateStr || pacificDateStr();
-  const clients = read(CLIENTS_FILE, []);
-  const usage = read(USAGE_FILE, []);
-
-  for (const client of clients) {
-    for (const number of (client.numbers || [])) {
-      let result;
-      try { result = await fetchNumberUsage(number, dateStr); }
-      catch(e) { console.warn('[Collect] failed', number, e.message); continue; }
-
-      // Upsert: replace any existing entry for this client+number+date
-      const idx = usage.findIndex(u => u.clientId === client.id && u.number === number && u.date === dateStr);
-      const entry = {
-        clientId: client.id, clientName: client.name, number,
-        date: dateStr, minutes: result.minutes, sms: result.sms,
-        collectedAt: new Date().toISOString()
-      };
-      if (idx >= 0) usage[idx] = entry; else usage.push(entry);
-      console.log('[Collect] ' + dateStr + ' ' + client.name + ' ' + number + ': ' + result.minutes + ' min, ' + result.sms + ' sms');
-    }
-  }
-  write(USAGE_FILE, usage);
-  return usage;
-}
-
-// Build (or preview) an invoice for a client for a given month (YYYY-MM).
-function buildInvoice(clientId, month) {
-  const clients = read(CLIENTS_FILE, []);
-  const client = clients.find(c => c.id === clientId);
-  if (!client) return null;
-  const usage = read(USAGE_FILE, []);
-  const rows = usage.filter(u => u.clientId === clientId && monthKey(u.date) === month);
-
-  const totalMin = rows.reduce((a, r) => a + (r.minutes || 0), 0);
-  const totalSms = rows.reduce((a, r) => a + (r.sms || 0), 0);
-  const rateMin = client.rateMin != null ? client.rateMin : DEFAULT_RATE_MIN;
-  const rateSms = client.rateSms != null ? client.rateSms : DEFAULT_RATE_SMS;
-  const costMin = totalMin * rateMin;
-  const costSms = totalSms * rateSms;
-
-  return {
-    clientId, clientName: client.name, month,
-    totalMinutes: totalMin, totalSms,
-    rateMin, rateSms,
-    costMinutes: Math.round(costMin * 100) / 100,
-    costSms: Math.round(costSms * 100) / 100,
-    total: Math.round((costMin + costSms) * 100) / 100,
-    dailyBreakdown: rows.sort((a,b) => a.date.localeCompare(b.date))
-  };
-}
-
-// Generate + persist invoices for all clients for a month.
-function generateMonthlyInvoices(month) {
-  const clients = read(CLIENTS_FILE, []);
-  const invoices = read(INVOICES_FILE, []);
-  let created = 0;
-  for (const client of clients) {
-    const inv = buildInvoice(client.id, month);
-    if (!inv) continue;
-    inv.id = 'INV-' + month + '-' + client.id;
-    inv.generatedAt = new Date().toISOString();
-    inv.status = 'generated';
-    const idx = invoices.findIndex(i => i.id === inv.id);
-    if (idx >= 0) invoices[idx] = inv; else invoices.push(inv);
-    created++;
-  }
-  write(INVOICES_FILE, invoices);
-  console.log('[Invoices] Generated ' + created + ' invoices for ' + month);
-  return invoices.filter(i => i.month === month);
-}
-
-// ── Auth (very light) ─────────────────────────────────────────────────────────
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  const user = read(USERS_FILE, []).find(u => u.username === username && u.password === password);
-  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-  res.json({ username: user.username, name: user.name, role: user.role });
+// ── Settings ──────────────────────────────────────────────────────────────────
+api.get('/settings', (req, res) => res.json(store.read('settings', {})));
+api.patch('/settings', (req, res) => {
+  const s = store.read('settings', {});
+  const b = req.body || {};
+  ['company', 'billTo', 'rates', 'brands'].forEach(k => { if (b[k]) s[k] = Object.assign({}, s[k], b[k]); });
+  ['paymentTerms', 'rebillBasis', 'cycle', 'nextInvoiceNumber', 'annotationsEnabled', 'defaultRateMin', 'defaultRateSms'].forEach(k => { if (b[k] !== undefined) s[k] = b[k]; });
+  if (s.rates) Object.keys(s.rates).forEach(k => { s.rates[k] = Number(s.rates[k]) || 0; });
+  s.cycle = s.cycle === 'monthly' ? 'monthly' : 'semimonthly';
+  s.rebillBasis = s.rebillBasis === 'activities' ? 'activities' : 'time';
+  s.nextInvoiceNumber = Number(s.nextInvoiceNumber) || 1;
+  s.defaultRateMin = Number(s.defaultRateMin) || 0;
+  s.defaultRateSms = Number(s.defaultRateSms) || 0;
+  store.write('settings', s);
+  res.json(s);
 });
 
-// ── Clients CRUD ──────────────────────────────────────────────────────────────
-app.get('/clients', (req, res) => res.json(read(CLIENTS_FILE, [])));
-
-// Number directory — flat list of every number and who it belongs to
-app.get('/numbers', (req, res) => {
-  const clients = read(CLIENTS_FILE, []);
-  const dir = [];
-  clients.forEach(c => (c.numbers || []).forEach(n => dir.push({
-    number: n, clientId: c.id, clientName: c.name, business: c.business || ''
-  })));
-  dir.sort((a, b) => a.clientName.localeCompare(b.clientName));
-  res.json(dir);
-});
-
-app.post('/clients', (req, res) => {
-  const clients = read(CLIENTS_FILE, []);
-  const { name, numbers, rateMin, rateSms, business, notes } = req.body;
-  if (!name) return res.status(400).json({ error: 'Name required' });
-  const id = 'c_' + Date.now().toString(36);
+// ── Clients ───────────────────────────────────────────────────────────────────
+const cleanList = v => (Array.isArray(v) ? v : String(v || '').split(',')).map(x => String(x).trim()).filter(Boolean);
+api.get('/clients', (req, res) => res.json(store.read('clients', [])));
+api.post('/clients', (req, res) => {
+  const b = req.body || {};
+  if (!b.name) return res.status(400).json({ error: 'Client name is required.' });
+  const s = store.read('settings', {});
   const client = {
-    id, name,
-    business: business || '',
-    numbers: (numbers || []).filter(Boolean),
-    rateMin: rateMin != null ? Number(rateMin) : DEFAULT_RATE_MIN,
-    rateSms: rateSms != null ? Number(rateSms) : DEFAULT_RATE_SMS,
-    notes: notes || '',
-    createdAt: new Date().toISOString()
+    id: store.uid('c'), name: b.name, business: b.business || '', numbers: cleanList(b.numbers), aliases: cleanList(b.aliases),
+    rateMin: b.rateMin != null ? Number(b.rateMin) : s.defaultRateMin, rateSms: b.rateSms != null ? Number(b.rateSms) : s.defaultRateSms,
+    notes: b.notes || '', billingContact: b.billingContact || '', createdAt: new Date().toISOString(),
   };
-  clients.push(client);
-  write(CLIENTS_FILE, clients);
+  const clients = store.read('clients', []); clients.push(client); store.write('clients', clients);
+  cartvip.rematchAll();
   res.json(client);
 });
-
-app.patch('/clients/:id', (req, res) => {
-  const clients = read(CLIENTS_FILE, []);
-  const idx = clients.findIndex(c => c.id === req.params.id);
-  if (idx < 0) return res.status(404).json({ error: 'Not found' });
-  const b = req.body;
-  if (b.name != null) clients[idx].name = b.name;
-  if (b.business != null) clients[idx].business = b.business;
-  if (b.numbers != null) clients[idx].numbers = b.numbers.filter(Boolean);
-  if (b.rateMin != null) clients[idx].rateMin = Number(b.rateMin);
-  if (b.rateSms != null) clients[idx].rateSms = Number(b.rateSms);
-  if (b.notes != null) clients[idx].notes = b.notes;
-  write(CLIENTS_FILE, clients);
-  res.json(clients[idx]);
+api.patch('/clients/:id', (req, res) => {
+  const clients = store.read('clients', []);
+  const c = clients.find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ error: 'Client not found.' });
+  const b = req.body || {};
+  if (b.name != null) c.name = b.name;
+  if (b.business != null) c.business = b.business;
+  if (b.numbers != null) c.numbers = cleanList(b.numbers);
+  if (b.aliases != null) c.aliases = cleanList(b.aliases);
+  if (b.rateMin != null) c.rateMin = Number(b.rateMin);
+  if (b.rateSms != null) c.rateSms = Number(b.rateSms);
+  if (b.notes != null) c.notes = b.notes;
+  if (b.billingContact != null) c.billingContact = b.billingContact;
+  store.write('clients', clients);
+  cartvip.rematchAll();
+  res.json(c);
+});
+api.delete('/clients/:id', (req, res) => {
+  store.write('clients', store.read('clients', []).filter(c => c.id !== req.params.id));
+  res.json({ ok: true });
 });
 
-app.delete('/clients/:id', (req, res) => {
-  write(CLIENTS_FILE, read(CLIENTS_FILE, []).filter(c => c.id !== req.params.id));
-  res.json({ success: true });
-});
-
-// ── Usage ─────────────────────────────────────────────────────────────────────
-app.get('/usage', (req, res) => {
-  let usage = read(USAGE_FILE, []);
+// ── Calls / usage (Telnyx) ────────────────────────────────────────────────────
+api.get('/usage', (req, res) => {
+  let usage = store.read('usage', []);
   const { clientId, month } = req.query;
   if (clientId) usage = usage.filter(u => u.clientId === clientId);
-  if (month) usage = usage.filter(u => monthKey(u.date) === month);
+  if (month) usage = usage.filter(u => T.monthKey(u.date) === month);
   res.json(usage);
 });
-
-// Manual usage entry (for when you paste Twilio's "From / Count" data by hand)
-app.post('/usage/manual', (req, res) => {
-  const { clientId, number, date, minutes, sms } = req.body;
-  const clients = read(CLIENTS_FILE, []);
-  const client = clients.find(c => c.id === clientId);
-  if (!client) return res.status(404).json({ error: 'Client not found' });
-  const usage = read(USAGE_FILE, []);
-  const d = date || pacificDateStr();
-  const idx = usage.findIndex(u => u.clientId === clientId && u.number === (number||'manual') && u.date === d);
-  const entry = {
-    clientId, clientName: client.name, number: number || 'manual',
-    date: d, minutes: Number(minutes)||0, sms: Number(sms)||0,
-    collectedAt: new Date().toISOString(), manual: true
-  };
-  if (idx >= 0) usage[idx] = entry; else usage.push(entry);
-  write(USAGE_FILE, usage);
+api.get('/daily', (req, res) => {
+  let daily = store.read('daily', []);
+  if (req.query.month) daily = daily.filter(d => T.monthKey(d.date) === req.query.month);
+  res.json(daily);
+});
+api.post('/usage/manual', (req, res) => {
+  const { clientId, number, date, minutes, sms, calls } = req.body || {};
+  const client = store.read('clients', []).find(c => c.id === clientId);
+  if (!client) return res.status(404).json({ error: 'Client not found.' });
+  const d = date || T.pacificDateStr();
+  const usage = store.read('usage', []).filter(u => !(u.clientId === clientId && u.number === (number || 'manual') && u.date === d && u.source === 'manual'));
+  const entry = { clientId, clientName: client.name, number: number || 'manual', date: d, calls: Number(calls) || 0, minutes: Number(minutes) || 0, sms: Number(sms) || 0, source: 'manual', manual: true, collectedAt: new Date().toISOString(), by: req.user.name };
+  usage.push(entry); store.write('usage', usage);
   res.json(entry);
 });
+api.post('/collect', wrap(async (req, res) => {
+  const date = (req.body && req.body.date) || T.pacificDateStr();
+  const day = await telnyx.collectDay(date);
+  store.logJob('telnyx-calls ' + date + ' (manual)', true, day.calls + ' calls, ' + day.minutes + ' min');
+  res.json(day);
+}));
 
-// Trigger a collection run manually (today or a given date)
-app.post('/collect', async (req, res) => {
-  const date = (req.body && req.body.date) || pacificDateStr();
-  try {
-    const usage = await collectUsage(date);
-    res.json({ success: true, date, entries: usage.filter(u => u.date === date).length });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── Invoices ──────────────────────────────────────────────────────────────────
-app.get('/invoices', (req, res) => {
-  let invoices = read(INVOICES_FILE, []);
-  const { clientId, month } = req.query;
-  if (clientId) invoices = invoices.filter(i => i.clientId === clientId);
-  if (month) invoices = invoices.filter(i => i.month === month);
-  res.json(invoices);
-});
-
-// Preview an invoice without saving (live calc)
-app.get('/invoices/preview', (req, res) => {
-  const { clientId, month } = req.query;
-  if (!clientId || !month) return res.status(400).json({ error: 'clientId and month required' });
-  const inv = buildInvoice(clientId, month);
-  if (!inv) return res.status(404).json({ error: 'Client not found' });
+// ── Receptionist invoices (per-minute billing) ────────────────────────────────
+api.get('/invoices', (req, res) => {
+  let inv = store.read('invoices', []);
+  if (req.query.clientId) inv = inv.filter(i => i.clientId === req.query.clientId);
+  if (req.query.month) inv = inv.filter(i => i.month === req.query.month);
   res.json(inv);
 });
-
-// Generate + save an invoice for one client
-app.post('/invoices/generate', (req, res) => {
-  const { clientId, month } = req.body;
-  if (!clientId || !month) return res.status(400).json({ error: 'clientId and month required' });
-  const inv = buildInvoice(clientId, month);
-  if (!inv) return res.status(404).json({ error: 'Client not found' });
-  inv.id = 'INV-' + month + '-' + clientId;
-  inv.generatedAt = new Date().toISOString();
-  inv.status = 'generated';
-  const invoices = read(INVOICES_FILE, []);
-  const idx = invoices.findIndex(i => i.id === inv.id);
-  if (idx >= 0) invoices[idx] = inv; else invoices.push(inv);
-  write(INVOICES_FILE, invoices);
+api.get('/invoices/preview', (req, res) => {
+  const { clientId, month } = req.query;
+  if (!clientId || !month) return res.status(400).json({ error: 'Choose a client and a month.' });
+  const inv = calc.buildUsageInvoice(clientId, month);
+  if (!inv) return res.status(404).json({ error: 'Client not found.' });
   res.json(inv);
 });
-
-// Generate for ALL clients for a month
-app.post('/invoices/generate-all', (req, res) => {
-  const month = (req.body && req.body.month) || monthKey(pacificDateStr());
-  res.json(generateMonthlyInvoices(month));
+function saveUsageInvoice(clientId, month) {
+  const inv = calc.buildUsageInvoice(clientId, month);
+  if (!inv) return null;
+  inv.id = 'INV-' + month + '-' + clientId; inv.kind = 'ai'; inv.generatedAt = new Date().toISOString(); inv.status = 'generated';
+  const all = store.read('invoices', []).filter(i => i.id !== inv.id); all.push(inv); store.write('invoices', all);
+  return inv;
+}
+api.post('/invoices/generate', (req, res) => {
+  const { clientId, month } = req.body || {};
+  const inv = clientId && month && saveUsageInvoice(clientId, month);
+  if (!inv) return res.status(400).json({ error: 'Choose a client and a month.' });
+  res.json(inv);
+});
+api.post('/invoices/generate-all', (req, res) => {
+  const month = (req.body && req.body.month) || T.monthKey(T.pacificDateStr());
+  res.json(store.read('clients', []).map(c => saveUsageInvoice(c.id, month)).filter(Boolean));
 });
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
-// type: 'recurring' (every month), 'onetime' (tied to a specific month), 'general' (untied)
-app.get('/expenses', (req, res) => {
-  let expenses = read(EXPENSES_FILE, []);
-  const { month } = req.query;
-  if (month) {
-    // Return recurring (always) + one-time for that month + general
-    expenses = expenses.filter(e =>
-      e.type === 'recurring' ||
-      e.type === 'general' ||
-      (e.type === 'onetime' && e.month === month)
-    );
-  }
-  res.json(expenses);
+const FREQS = ['once', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'custom'];
+function expenseFromBody(b, base) {
+  const e = Object.assign({}, base);
+  if (b.label != null) e.label = String(b.label).trim();
+  if (b.amount != null) e.amount = Number(b.amount) || 0;
+  if (b.category != null) e.category = b.category;
+  if (b.frequency != null) e.frequency = FREQS.includes(b.frequency) ? b.frequency : 'once';
+  if (b.everyMonths != null) e.everyMonths = Math.max(1, Number(b.everyMonths) || 1);
+  if (b.startDate != null) e.startDate = b.startDate;
+  if (b.endDate !== undefined) e.endDate = b.endDate || null;
+  if (b.notes != null) e.notes = b.notes;
+  return e;
+}
+api.get('/expenses', (req, res) => {
+  if (req.query.month) return res.json(calc.expensesForMonth(req.query.month));
+  res.json(store.read('expenses', []));
 });
-
-app.post('/expenses', (req, res) => {
-  const expenses = read(EXPENSES_FILE, []);
-  const { label, amount, type, month } = req.body;
-  if (!label || amount == null) return res.status(400).json({ error: 'label and amount required' });
-  const exp = {
-    id: 'e_' + Date.now().toString(36),
-    label, amount: Number(amount),
-    type: ['recurring','onetime','general'].includes(type) ? type : 'onetime',
-    month: type === 'onetime' ? (month || monthKey(pacificDateStr())) : null,
-    createdAt: new Date().toISOString()
-  };
-  expenses.push(exp);
-  write(EXPENSES_FILE, expenses);
+api.post('/expenses', (req, res) => {
+  const b = req.body || {};
+  if (!b.label || b.amount == null) return res.status(400).json({ error: 'Add a name and an amount.' });
+  const e = expenseFromBody(b, { id: store.uid('e'), source: 'manual', frequency: 'once', startDate: T.pacificDateStr(), endDate: null, category: '', notes: '', createdAt: new Date().toISOString(), by: req.user.name });
+  const all = store.read('expenses', []); all.push(e); store.write('expenses', all);
+  res.json(e);
+});
+api.patch('/expenses/:id', (req, res) => {
+  const all = store.read('expenses', []);
+  const i = all.findIndex(e => e.id === req.params.id);
+  if (i < 0) return res.status(404).json({ error: 'Expense not found.' });
+  all[i] = expenseFromBody(req.body || {}, all[i]);
+  store.write('expenses', all);
+  res.json(all[i]);
+});
+api.delete('/expenses/:id', (req, res) => {
+  store.write('expenses', store.read('expenses', []).filter(e => e.id !== req.params.id));
+  res.json({ ok: true });
+});
+api.post('/expenses/telnyx-sync', wrap(async (req, res) => {
+  const month = (req.body && req.body.month) || T.monthKey(T.pacificDateStr());
+  const exp = await telnyx.syncMonthlyExpense(month);
+  store.logJob('telnyx-expense ' + month + ' (manual)', !exp.summaryError, '$' + exp.amount + (exp.summaryError ? ' — charges summary: ' + exp.summaryError : ''));
   res.json(exp);
+}));
+
+// ── Agents ────────────────────────────────────────────────────────────────────
+api.get('/agents', (req, res) => res.json(store.read('agents', [])));
+api.post('/agents', (req, res) => {
+  const b = req.body || {};
+  if (!b.name) return res.status(400).json({ error: 'Agent name is required.' });
+  const a = { id: store.uid('a'), name: String(b.name).trim(), role: b.role === 'manager' ? 'manager' : 'agent', aliases: cleanList(b.aliases), payRate: b.payRate === '' || b.payRate == null ? null : Number(b.payRate), active: b.active !== false, createdAt: new Date().toISOString() };
+  const all = store.read('agents', []); all.push(a); store.write('agents', all);
+  res.json(a);
+});
+api.patch('/agents/:id', (req, res) => {
+  const all = store.read('agents', []);
+  const a = all.find(x => x.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Agent not found.' });
+  const b = req.body || {};
+  if (b.name != null) a.name = String(b.name).trim();
+  if (b.role != null) a.role = b.role === 'manager' ? 'manager' : 'agent';
+  if (b.aliases != null) a.aliases = cleanList(b.aliases);
+  if (b.payRate !== undefined) a.payRate = b.payRate === '' || b.payRate == null ? null : Number(b.payRate);
+  if (b.active != null) a.active = !!b.active;
+  store.write('agents', all);
+  res.json(a);
+});
+api.delete('/agents/:id', (req, res) => {
+  store.write('agents', store.read('agents', []).filter(a => a.id !== req.params.id));
+  res.json({ ok: true });
 });
 
-app.patch('/expenses/:id', (req, res) => {
-  const expenses = read(EXPENSES_FILE, []);
-  const idx = expenses.findIndex(e => e.id === req.params.id);
-  if (idx < 0) return res.status(404).json({ error: 'Not found' });
-  const b = req.body;
-  if (b.label != null) expenses[idx].label = b.label;
-  if (b.amount != null) expenses[idx].amount = Number(b.amount);
-  if (b.type != null) { expenses[idx].type = b.type; if (b.type !== 'onetime') expenses[idx].month = null; }
-  if (b.month != null) expenses[idx].month = b.month;
-  write(EXPENSES_FILE, expenses);
-  res.json(expenses[idx]);
+// ── Sales (CartVIP) ───────────────────────────────────────────────────────────
+api.post('/sales/sync', wrap(async (req, res) => {
+  const b = req.body || {};
+  let from = b.from, to = b.to;
+  if (b.periodId) { const r = calc.periodRange(b.periodId); from = r.from; to = r.to; }
+  const today = T.pacificDateStr();
+  if (!from) { from = T.addDays(today, -2); to = today; }
+  if (to > today) to = today;
+  const result = await cartvip.syncRange(from, to);
+  store.logJob('cartvip-sales ' + from + '…' + to + ' (manual)', true, result.fetched + ' fetched, ' + result.added + ' new');
+  res.json(result);
+}));
+api.post('/sales', (req, res) => {
+  const b = req.body || {};
+  if (!b.soldOn || b.total == null || b.total === '') return res.status(400).json({ error: 'Add the sale date and total.' });
+  const clients = store.read('clients', []);
+  const s = {
+    id: store.uid('s'), source: 'manual', confirmation: b.confirmation || '', customer: b.customer || '', phone: '',
+    reservationDate: b.reservationDate || '', soldOn: b.soldOn, destination: b.destination || '', package: b.package || '',
+    guests: null, total: Number(b.total) || 0, clientId: b.clientId || cartvip.matchClient(b.destination, clients), clientSource: b.clientId ? 'manual' : 'auto',
+    credits: (b.credits || []).filter(c => c.agentId).map(c => ({ agentId: c.agentId, amount: c.amount === '' || c.amount == null ? null : Number(c.amount) })),
+    agentSource: 'manual', excluded: false, createdAt: new Date().toISOString(), by: req.user.name,
+  };
+  const all = store.read('sales', []); all.push(s); store.write('sales', all);
+  res.json(s);
+});
+api.patch('/sales/:id', (req, res) => {
+  const all = store.read('sales', []);
+  const s = all.find(x => x.id === req.params.id);
+  if (!s) return res.status(404).json({ error: 'Sale not found.' });
+  const b = req.body || {};
+  if (b.credits != null) { s.credits = b.credits.filter(c => c.agentId).map(c => ({ agentId: c.agentId, amount: c.amount === '' || c.amount == null ? null : Number(c.amount) })); s.agentSource = 'manual'; }
+  if (b.clientId !== undefined) { s.clientId = b.clientId || null; s.clientSource = 'manual'; }
+  if (b.excluded != null) s.excluded = !!b.excluded;
+  if (b.soldOn) { s.soldOn = b.soldOn; s.soldOnManual = true; }
+  if (s.source === 'manual') ['confirmation', 'customer', 'destination', 'package', 'reservationDate'].forEach(k => { if (b[k] != null) s[k] = b[k]; });
+  if (s.source === 'manual' && b.total != null && b.total !== '') s.total = Number(b.total) || 0;
+  store.write('sales', all);
+  res.json(s);
+});
+api.delete('/sales/:id', (req, res) => {
+  const all = store.read('sales', []);
+  const s = all.find(x => x.id === req.params.id);
+  if (s && s.source !== 'manual') return res.status(400).json({ error: 'CartVIP sales come back on the next sync — exclude it instead.' });
+  store.write('sales', all.filter(x => x.id !== req.params.id));
+  res.json({ ok: true });
 });
 
-app.delete('/expenses/:id', (req, res) => {
-  write(EXPENSES_FILE, read(EXPENSES_FILE, []).filter(e => e.id !== req.params.id));
-  res.json({ success: true });
+// ── Call-center periods (hours, commissions, invoice) ─────────────────────────
+api.get('/periods', (req, res) => {
+  const cycle = store.read('settings', {}).cycle;
+  const docs = store.read('periods', []);
+  res.json(calc.recentPeriods(cycle, 12).map(p => {
+    const d = docs.find(x => x.id === p.id) || {};
+    return Object.assign(p, { status: d.status || 'draft', invoiceNo: d.invoiceNo || null });
+  }));
 });
-
-// Expense total for a given month (recurring + that month's one-time + general)
-function expensesForMonth(month) {
-  return read(EXPENSES_FILE, []).filter(e =>
-    e.type === 'recurring' || e.type === 'general' || (e.type === 'onetime' && e.month === month)
-  );
-}
-
-// ── Health + Twilio status ────────────────────────────────────────────────────
-app.get('/status', (req, res) => {
-  res.json({
-    ok: true,
-    twilioConfigured: !!(TWILIO_SID && TWILIO_TOKEN),
-    time: new Date().toISOString(),
-    pacificDate: pacificDateStr()
+api.get('/periods/:id', (req, res) => res.json(calc.computePeriod(req.params.id)));
+api.patch('/periods/:id', (req, res) => {
+  const doc = calc.getPeriodDoc(req.params.id);
+  if (doc.status === 'final') return res.status(400).json({ error: 'This invoice is finalized. Reopen it to make changes.' });
+  const b = req.body || {};
+  ['hours', 'extraBonus'].forEach(k => {
+    if (!b[k]) return;
+    doc[k] = Object.assign({}, doc[k] || {}, b[k]);
+    Object.keys(doc[k]).forEach(id => { if (doc[k][id] === '' || doc[k][id] == null) delete doc[k][id]; else doc[k][id] = Number(doc[k][id]) || 0; });
   });
+  // Rebill overrides per Aloware line: { lineId: { minutes, activities } } — '' clears a field.
+  if (b.rebillOverrides) {
+    const ov = {};
+    Object.entries(doc.rebillOverrides || {}).forEach(([id, v]) => { if (v && typeof v === 'object') ov[id] = v; });
+    Object.entries(b.rebillOverrides).forEach(([id, v]) => {
+      const cur = Object.assign({}, ov[id]);
+      Object.entries(v || {}).forEach(([f, val]) => { if (val === '' || val == null) delete cur[f]; else cur[f] = Number(val) || 0; });
+      if (Object.keys(cur).length) ov[id] = cur; else delete ov[id];
+    });
+    doc.rebillOverrides = ov;
+  }
+  calc.savePeriodDoc(doc);
+  res.json(calc.computePeriod(req.params.id));
+});
+api.post('/periods/:id/copy-hours', (req, res) => {
+  const doc = calc.getPeriodDoc(req.params.id);
+  if (doc.status === 'final') return res.status(400).json({ error: 'This invoice is finalized. Reopen it to make changes.' });
+  const from = calc.getPeriodDoc((req.body || {}).fromId);
+  doc.hours = Object.assign({}, from.hours || {});
+  calc.savePeriodDoc(doc);
+  res.json(calc.computePeriod(req.params.id));
+});
+api.post('/periods/:id/finalize', (req, res) => {
+  const doc = calc.getPeriodDoc(req.params.id);
+  if (doc.status === 'final') return res.status(400).json({ error: 'Already finalized.' });
+  const settings = store.read('settings', {});
+  if (!doc.invoiceNo) { doc.invoiceNo = settings.nextInvoiceNumber || 1; settings.nextInvoiceNumber = doc.invoiceNo + 1; store.write('settings', settings); }
+  calc.savePeriodDoc(doc);
+  const snap = calc.computePeriod(req.params.id);
+  snap.invoiceNo = doc.invoiceNo;
+  snap.invoiceDate = T.pacificDateStr();
+  Object.assign(doc, { status: 'final', snapshot: snap, finalizedAt: new Date().toISOString(), finalizedBy: req.user.name });
+  calc.savePeriodDoc(doc);
+  res.json(calc.computePeriod(req.params.id));
+});
+api.post('/periods/:id/reopen', (req, res) => {
+  const doc = calc.getPeriodDoc(req.params.id);
+  doc.status = 'draft'; delete doc.snapshot;
+  calc.savePeriodDoc(doc);
+  res.json(calc.computePeriod(req.params.id));
 });
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-
-// ── Cron jobs ─────────────────────────────────────────────────────────────────
-// Daily collection at 23:59 Pacific (07:59 UTC next day, roughly — we run at both
-// 06:59 and 07:59 UTC to cover PST/PDT, guarded by date).
-let lastCollectDate = null;
-async function dailyCollect() {
-  const today = pacificDateStr();
-  if (lastCollectDate === today) return;
-  console.log('[Cron] Daily collection for ' + today);
-  try { await collectUsage(today); lastCollectDate = today; }
-  catch(e) { console.warn('[Cron] Collection failed:', e.message); }
+// ── Aloware lines (rebill rows) ───────────────────────────────────────────────
+api.get('/aloware/status', (req, res) => res.json(aloware.status()));
+api.get('/aloware/lines', (req, res) => res.json(store.read('alowareLines', [])));
+function lineFromBody(b, base) {
+  const l = Object.assign({}, base);
+  if (b.name != null) l.name = String(b.name).trim();
+  if (b.alowareLineId !== undefined) l.alowareLineId = b.alowareLineId === '' || b.alowareLineId == null ? null : String(b.alowareLineId).trim();
+  if (b.number != null) l.number = String(b.number).trim();
+  if (b.clientIds != null) l.clientIds = (Array.isArray(b.clientIds) ? b.clientIds : []).filter(Boolean);
+  if (b.rebill != null) l.rebill = !!b.rebill;
+  delete l.auto;
+  return l;
 }
-cron.schedule('59 6 * * *',  dailyCollect, { timezone: 'UTC' }); // 23:59 PDT
-cron.schedule('59 7 * * *',  dailyCollect, { timezone: 'UTC' }); // 23:59 PST
+api.post('/aloware/lines', (req, res) => {
+  const b = req.body || {};
+  if (!b.name) return res.status(400).json({ error: 'Give the line a name.' });
+  const l = lineFromBody(b, { id: store.uid('al'), alowareLineId: null, number: '', clientIds: [], rebill: true, createdAt: new Date().toISOString() });
+  const all = store.read('alowareLines', []); all.push(l); store.write('alowareLines', all);
+  res.json(l);
+});
+api.patch('/aloware/lines/:id', (req, res) => {
+  const all = store.read('alowareLines', []);
+  const i = all.findIndex(l => l.id === req.params.id);
+  if (i < 0) return res.status(404).json({ error: 'Line not found.' });
+  all[i] = lineFromBody(req.body || {}, all[i]);
+  store.write('alowareLines', all);
+  res.json(all[i]);
+});
+api.delete('/aloware/lines/:id', (req, res) => {
+  store.write('alowareLines', store.read('alowareLines', []).filter(l => l.id !== req.params.id));
+  res.json({ ok: true });
+});
 
-// Monthly invoices on the 1st at 00:30 Pacific — generate for the PREVIOUS month.
-let lastInvoiceMonth = null;
-function monthlyInvoices() {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-  if (now.getDate() !== 1) return;
-  // previous month
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const month = prev.toISOString().slice(0, 7);
-  if (lastInvoiceMonth === month) return;
-  console.log('[Cron] Monthly invoices for ' + month);
-  generateMonthlyInvoices(month);
-  lastInvoiceMonth = month;
+// ── Venue invoices (AI receptionist + call center, one each per venue) ─────────
+api.get('/venue-invoices', (req, res) => res.json(calc.venueInvoices(req.query.month || T.monthKey(T.pacificDateStr()))));
+api.post('/venue-invoices/save', (req, res) => {
+  const b = req.body || {};
+  const month = b.month || T.monthKey(T.pacificDateStr());
+  const v = calc.venueInvoices(month);
+  const saved = [];
+  v.rows.filter(r => !b.clientId || r.clientId === b.clientId).forEach(r => {
+    if ((!b.kind || b.kind === 'ai') && r.ai.total > 0) saved.push(saveUsageInvoice(r.clientId, month));
+    if ((!b.kind || b.kind === 'callcenter') && r.callCenter.total > 0) {
+      const inv = {
+        id: 'CL-' + month + '-' + r.clientId, kind: 'callcenter', clientId: r.clientId, clientName: r.name, billingContact: r.billingContact,
+        month, lines: r.callCenter.lines, total: r.callCenter.total, sales: r.sales, brand: v.brands.callCenter,
+        company: v.company, paymentTerms: v.paymentTerms, generatedAt: new Date().toISOString(), by: req.user.name,
+      };
+      const all = store.read('invoices', []).filter(i => i.id !== inv.id); all.push(inv); store.write('invoices', all);
+      saved.push(inv);
+    }
+  });
+  res.json(saved);
+});
+
+// ── Dev-phase annotations (drawings, arrows, comments) ────────────────────────
+api.get('/annotations', (req, res) => {
+  let all = store.read('annotations', []);
+  if (req.query.page) all = all.filter(a => a.page === req.query.page);
+  res.json(all);
+});
+api.post('/annotations', (req, res) => {
+  const b = req.body || {};
+  const a = { id: store.uid('n'), page: b.page || 'overview', kind: b.kind, color: b.color || '#EC2229', data: b.data || {}, text: b.text || '', replies: [], resolved: false, author: req.user.name, createdAt: new Date().toISOString() };
+  const all = store.read('annotations', []); all.push(a); store.write('annotations', all);
+  res.json(a);
+});
+api.patch('/annotations/:id', (req, res) => {
+  const all = store.read('annotations', []);
+  const a = all.find(x => x.id === req.params.id);
+  if (!a) return res.status(404).json({ error: 'Not found.' });
+  const b = req.body || {};
+  if (b.text != null) a.text = b.text;
+  if (b.resolved != null) a.resolved = !!b.resolved;
+  if (b.data != null) a.data = b.data;
+  if (b.reply) a.replies.push({ text: String(b.reply), author: req.user.name, at: new Date().toISOString() });
+  store.write('annotations', all);
+  res.json(a);
+});
+api.delete('/annotations/:id', (req, res) => {
+  store.write('annotations', store.read('annotations', []).filter(a => a.id !== req.params.id));
+  res.json({ ok: true });
+});
+// Clears drawings on a page (comments stay — they're resolved individually).
+api.delete('/annotations', (req, res) => {
+  if (!req.query.page) return res.status(400).json({ error: 'page is required' });
+  store.write('annotations', store.read('annotations', []).filter(a => a.page !== req.query.page || a.kind === 'comment'));
+  res.json({ ok: true });
+});
+
+// ── Month-end run on demand ───────────────────────────────────────────────────
+api.post('/jobs/month-end', wrap(async (req, res) => {
+  const month = (req.body && req.body.month) || T.monthKey(T.pacificDateStr());
+  res.json(await monthEnd(month, 'manual'));
+}));
+
+api.use((req, res) => res.status(404).json({ error: 'Unknown API route: ' + req.method + ' ' + req.path }));
+app.use('/api', api);
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// ── Scheduled jobs (Pacific time) ─────────────────────────────────────────────
+const running = {};
+async function once(name, fn) {
+  if (running[name]) return; running[name] = true;
+  try { await fn(); } finally { running[name] = false; }
 }
-cron.schedule('30 8 1 * *', monthlyInvoices, { timezone: 'UTC' });
-cron.schedule('30 9 1 * *', monthlyInvoices, { timezone: 'UTC' });
+async function safe(label, fn) {
+  try { const detail = await fn(); store.logJob(label, true, detail); return true; }
+  catch (e) { store.logJob(label, false, e.message); return false; }
+}
 
-app.listen(PORT, () => console.log('Winning Vocal Collector running on port ' + PORT + ' | Twilio: ' + (TWILIO_SID ? 'configured' : 'NOT configured')));
+async function collectAndSync(date) {
+  if (telnyx.configured()) await safe('telnyx-calls ' + date, async () => { const d = await telnyx.collectDay(date); return d.calls + ' calls, ' + d.minutes + ' min, ' + d.unassignedCalls + ' unassigned'; });
+  if (cartvip.configured()) await safe('cartvip-sales ' + T.addDays(date, -2) + '…' + date, async () => { const r = await cartvip.syncRange(T.addDays(date, -2), date); return r.fetched + ' fetched, ' + r.added + ' new'; });
+}
+
+async function monthEnd(month, how) {
+  const out = { month };
+  if (!telnyx.configured()) { out.skipped = 'TELNYX_API_KEY is not set'; return out; }
+  await safe('telnyx-expense ' + month + (how ? ' (' + how + ')' : ''), async () => {
+    const e = await telnyx.syncMonthlyExpense(month); out.telnyx = e;
+    if (e.summaryError) throw new Error('$' + e.amount + ' saved from call records; charges summary failed: ' + e.summaryError);
+    return '$' + e.amount;
+  });
+  return out;
+}
+
+const TZ = { timezone: T.TZ };
+// 11:59 PM — pull today's calls from Telnyx + recent CartVIP sales. On the last day, book the Telnyx expense.
+cron.schedule('59 23 * * *', () => once('nightly', async () => {
+  const today = T.pacificDateStr();
+  await collectAndSync(today);
+  if (T.isLastDayOfMonth(today)) await monthEnd(T.monthKey(today), 'month end');
+}), TZ);
+// 12:20 AM — re-pull yesterday so calls after 11:59 PM and late records are included.
+cron.schedule('20 0 * * *', () => once('catchup', async () => {
+  await collectAndSync(T.addDays(T.pacificDateStr(), -1));
+}), TZ);
+// 1st of the month, 6:30 AM — final Telnyx numbers for last month + receptionist invoices.
+cron.schedule('30 6 1 * *', () => once('monthclose', async () => {
+  const prev = T.addMonths(T.monthKey(T.pacificDateStr()), -1);
+  await monthEnd(prev, 'final');
+  await safe('receptionist-invoices ' + prev, async () => store.read('clients', []).map(c => saveUsageInvoice(c.id, prev)).filter(Boolean).length + ' invoices');
+}), TZ);
+
+app.listen(PORT, () => console.log('Winning Vocal billing on :' + PORT + ' | Telnyx ' + (telnyx.configured() ? 'on' : 'off') + ' | CartVIP ' + (cartvip.configured() ? 'on' : 'off') + ' | data ' + store.DATA_DIR));
